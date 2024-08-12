@@ -1,0 +1,9 @@
+name: minimap2
+channels:
+  - conda-forge
+  - bioconda
+  - r
+  - defaults
+dependencies:
+  - minimap2
+  - samtools

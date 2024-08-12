@@ -1,0 +1,11 @@
+name: clair3
+channels:
+  - conda-forge
+  - bioconda
+  - r
+  - defaults
+dependencies:
+  - clair3
+  - rtg-tools
+  - tabix
+  - bcftools

@@ -1,0 +1,7 @@
+name: happy
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
+dependencies:
+  - hap.py

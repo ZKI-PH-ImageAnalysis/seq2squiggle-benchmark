@@ -1,0 +1,10 @@
+name: plot-runtime
+channels:
+  - conda-forge
+  - bioconda
+  - r
+  - defaults
+dependencies:
+  - matplotlib
+  - seaborn
+  - pandas

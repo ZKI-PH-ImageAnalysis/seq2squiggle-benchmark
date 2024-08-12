@@ -1,0 +1,69 @@
+# Runtime and memory benchmark
+# A directory to use for temporary files if TMPDIR is not set
+default_tmp: tmp
+
+partition_singleGPU: ''
+partition_multiGPU: ''
+
+# Download paths
+human_data: 'ftp://ftp.sra.ebi.ac.uk/vol1/run/ERR117/ERR11769395/PGXX22563_nonmethylated.tar.gz'
+d_melanogaster_data: 's3://ont-open-data/contrib/melanogaster_bkim_2023.01/flowcells/D.melanogaster.R1041.400bps/D_melanogaster_1/20221217_1251_MN20261_FAV70669_117da01a/ D_melanogaster_R1041_400bps_1'
+human_ref: 'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/001/405/GCA_000001405.15_GRCh38/seqs_for_alignment_pipelines.ucsc_ids/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna.gz'
+d_melanogaster_ref: 'https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/001/215/GCF_000001215.4_Release_6_plus_ISO1_MT/GCF_000001215.4_Release_6_plus_ISO1_MT_genomic.fna.gz'
+human_vcf: 'https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/NA12878_HG001/latest/GRCh38/HG001_GRCh38_1_22_v4.2.1_benchmark.vcf.gz'
+
+# Sub-sampling
+subsample-human: '100000'
+subsample-fly: '100000'
+subsample-fly-noise: '50000'
+max_seq_len: '20' # for skipping short basecalled reads
+dtw_seqs: '2000' # number of sequence that will be visualized for dtw plots
+
+# Training, validation and test split
+region_train: 'chr2 chr3 chr4' #'chr2{2..21}'
+region_valid: 'chr22'
+region_test: 'chr1'
+
+# Commandline args for the different modes
+read_mode:
+  seq2squiggle: "--ideal-event-length -1 --duration-sampler True --noise-sampler True --read-input"
+  squigulator: "-x dna-r10-prom --sample-rate 4000.0 --full-contigs"
+genome_mode:
+  seq2squiggle: "--ideal-event-length -1 --duration-sampler True --noise-sampler True -r 3000"
+  squigulator: "-x dna-r10-prom --sample-rate 4000.0 -r 3000"
+variant_calling:
+  seq2squiggle: "--ideal-event-length -1 --duration-sampler True --noise-sampler True -n 200000 -r 10000"
+  squigulator: "-x dna-r10-prom --sample-rate 4000.0 -n 200000 -r 10000"
+d_melanogaster_genome_mode:
+  seq2squiggle: "--ideal-event-length -1 --duration-sampler True --noise-sampler True -r 5000"
+  squigulator: "-x dna-r10-prom --sample-rate 4000.0 -r 5000"
+d_melanogaster_noise:
+  seq2squiggle_nonoise: "--noise-std 0.0 --ideal-event-length 10.0 --duration-sampler False --noise-sampler False"
+  seq2squiggle_manualnoise: "--noise-std 1.0 --ideal-event-length 10.0 --duration-sampler False --noise-sampler False"
+  seq2squiggle_noisesampler: "--noise-std 1.0 --ideal-event-length 10.0 --duration-sampler False --noise-sampler True"
+  seq2squiggle_lengthregulator: "--noise-std 0.0 --ideal-event-length -1.0 --duration-sampler True --noise-sampler False"
+  seq2squiggle_lengthregulator_manualnoise: "--noise-std 1.0 --ideal-event-length -1.0 --duration-sampler True --noise-sampler False"
+  seq2squiggle_manuallength: "--noise-std 0.0 --ideal-event-length -1.0 --duration-sampler False --noise-sampler False"
+  seq2squiggle_lengthregulator_noisesampler: "--noise-std 1.0 --ideal-event-length -1.0 --duration-sampler True --noise-sampler True"
+  seq2squiggle_mLR_mNS: "--noise-std 1.0 --ideal-event-length -1.0 --duration-sampler False --noise-sampler False"
+  squigulator_ideal: "-x dna-r10-prom --sample-rate 4000.0 --ideal"
+  squigulator_idealtime: "-x dna-r10-prom --sample-rate 4000.0 --ideal-time"
+  squigulator_idealamp: "-x dna-r10-prom --sample-rate 4000.0 --ideal-amp"
+  squigulator_default: ""
+
+# Segmentation options
+uncalled4_commands: "--eventalign-flags print-read-names,signal-index,samples --pore-model dna_r10.4.1_400bps_9mer --flowcell FLO-MIN114 --kit SQK-LSK114"
+
+# Basecalling options
+basecalling_model: "dna_r10.4.1_e8.2_400bps_sup.cfg"
+buttery_eel_commands: ""
+
+# Alignment options
+minimap2_commands: "-x map-ont --eqx -a --secondary=no"
+
+# Variant calling options
+region_variant: 'chr22'
+homopolymer_length: 5
+clair3_commands: "--include_all_ctgs"
+region_variants: "chr22:1-50818468"
+

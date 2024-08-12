@@ -1,0 +1,38 @@
+from snakemake.utils import min_version
+
+min_version("7.12.1")
+
+configfile: "config/config.yml"
+
+rule all:
+    input:
+        "summary/human-genome-mode/",
+        "summary/human-read-mode/",
+        "summary/d-melanogaster/",
+        "summary/variants/",
+        "summary/d-melanogaster-noise/",
+        "summary/group-plots/",
+        
+
+# Some helper functions and rules
+include: "rules/common.smk"
+# Generating input files
+include: "rules/d-melanogaster-genome-mode/input.smk"
+include: "rules/human-genome-mode/input.smk"
+# Read mode - Human
+include: "rules/human-read-mode/benchmark.smk"
+include: "rules/human-read-mode/summary.smk"
+# Genome mode - Human
+include: "rules/human-genome-mode/benchmark.smk"
+include: "rules/human-genome-mode/summary.smk"
+# Variant calling - Human
+include: "rules/human-variant-calling/variant_calling.smk"
+# Genome mode - Fruit fly
+include: "rules/d-melanogaster-genome-mode/benchmark.smk"
+include: "rules/d-melanogaster-genome-mode/summary.smk"
+# Noise study - Fruit fly
+include: "rules/d-melanogaster-noise-study/benchmark_seq2squiggle.smk"
+include: "rules/d-melanogaster-noise-study/benchmark_squigulator.smk"
+include: "rules/d-melanogaster-noise-study/summary.smk"
+# Group plots
+include: "rules/group-plots/summary.smk"
