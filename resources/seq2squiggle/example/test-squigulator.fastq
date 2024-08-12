@@ -1,0 +1,28 @@
+@S1_7!sequenceID-009-C-homop!0!96!+ parent_read_id=S1_7!sequenceID-009-C-homop!0!96!+ model_version_id=dna_r10.4.1_e8.2_5khz_400bps_sup@v4.2.0 mean_qscore=1
+T
++
+"
+@S1_6!sequenceID-008-T-homop!0!96!+ parent_read_id=S1_6!sequenceID-008-T-homop!0!96!+ model_version_id=dna_r10.4.1_e8.2_5khz_400bps_sup@v4.2.0 mean_qscore=2
+TTTTTTTTTT
++
+#$$$$$$$##
+@S1_5!sequenceID-007-A-homop!0!96!+ parent_read_id=S1_5!sequenceID-007-A-homop!0!96!+ model_version_id=dna_r10.4.1_e8.2_5khz_400bps_sup@v4.2.0 mean_qscore=1
+T
++
+"
+@S1_4!sequenceID-006-G-homop!0!96!+ parent_read_id=S1_4!sequenceID-006-G-homop!0!96!+ model_version_id=dna_r10.4.1_e8.2_5khz_400bps_sup@v4.2.0 mean_qscore=1
+TGTGTGTGTGTGTGTGTG
++
+##################
+@S1_3!sequenceID-005-TCAG-repeat!0!96!+ parent_read_id=S1_3!sequenceID-005-TCAG-repeat!0!96!+ model_version_id=dna_r10.4.1_e8.2_5khz_400bps_sup@v4.2.0 mean_qscore=9
+GTGGGTGGAGTAGTAGTAGTAGTAGTAGTAGTAGTAGTAGTAGTAGTAGTAGTAGTAGTAGTAGTAGTAG
++
+%%%%%$$%$$$%-..01124456566666555589111000012----.///////...,,,+++(((&%
+@S1_2!sequenceID-004-ACTG-repeat!0!96!+ parent_read_id=S1_2!sequenceID-004-ACTG-repeat!0!96!+ model_version_id=dna_r10.4.1_e8.2_5khz_400bps_sup@v4.2.0 mean_qscore=4
+AAGCTAACTCATCTCATTAAGCTAACTAGTTGACTAACTCATCTAACTAACTCATTAAGCTAACTCATTAACTCATTGACTGAGCTAACCA
++
+$$%%%%&**)++++)))*&%%$$$&'('&&&%%%%$%%&&&('&$%&(('&&%%&&%%'''''&&%%&&&&'-((('%%&&%$$$$#$&%$
+@S1_1!sequenceID-003-GAC-repeat!0!96!+ parent_read_id=S1_1!sequenceID-003-GAC-repeat!0!96!+ model_version_id=dna_r10.4.1_e8.2_5khz_400bps_sup@v4.2.0 mean_qscore=17
+CAGCAGCAGCAGCAGCAGCAGCAGCAGCAGCAGCAGCAGCAGCAGCAGCAGCAGCAGCAGCAGCAGCAGCAGCAGCAGCAGCAGCAG
++
+.//212433655666;;<D:::99;9:<::;;;??@AAC{:::9::::;::::;KMKEQM{JW{VIGUGF<<<444///...++*)(
