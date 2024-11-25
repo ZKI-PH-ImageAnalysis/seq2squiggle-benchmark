@@ -51,7 +51,8 @@ def scatter_dtw(df, ax):
     
     # Customize legend
     handles, labels = g.get_legend_handles_labels()
-    new_labels = ['seq2squiggle better', 'squigulator better']
+    # new_labels = ['seq2squiggle better', 'squigulator better']
+    new_labels = ['squigulator better', 'seq2squiggle better']
     g.legend(handles=handles, labels=new_labels, title=None, loc='upper left')
 
 def violin_dtw(df, ax):

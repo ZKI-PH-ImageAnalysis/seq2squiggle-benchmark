@@ -1,6 +1,6 @@
 rule sam_stats_squigulator_ideal_fly:
     input:
-        ref="data/d-melanogaster/GCF_000001215.4_Release_6_plus_ISO1_MT_genomic.fna",
+        ref=config["d_melanogaster_ref"],
         sam=rules.align_squigulator_ideal_fly.output
     output:
         "results/d-melanogaster-noise/squigulator_ideal.npz",
@@ -21,7 +21,7 @@ rule sam_stats_squigulator_ideal_fly:
 
 rule sam_stats_squigulator_idealtime_fly:
     input:
-        ref="data/d-melanogaster/GCF_000001215.4_Release_6_plus_ISO1_MT_genomic.fna",
+        ref=config["d_melanogaster_ref"],
         sam=rules.align_squigulator_idealtime_fly.output
     output:
         "results/d-melanogaster-noise/squigulator_idealtime.npz",
@@ -41,7 +41,7 @@ rule sam_stats_squigulator_idealtime_fly:
 
 rule sam_stats_squigulator_idealamp_fly:
     input:
-        ref="data/d-melanogaster/GCF_000001215.4_Release_6_plus_ISO1_MT_genomic.fna",
+        ref=config["d_melanogaster_ref"],
         sam=rules.align_squigulator_idealamp_fly.output
     output:
         "results/d-melanogaster-noise/squigulator_idealamp.npz",
@@ -61,7 +61,7 @@ rule sam_stats_squigulator_idealamp_fly:
 
 rule sam_stats_squigulator_default_fly:
     input:
-        ref="data/d-melanogaster/GCF_000001215.4_Release_6_plus_ISO1_MT_genomic.fna",
+        ref=config["d_melanogaster_ref"],
         sam=rules.align_squigulator_default_fly.output
     output:
         "results/d-melanogaster-noise/squigulator_default.npz",
@@ -82,7 +82,7 @@ rule sam_stats_squigulator_default_fly:
 
 rule sam_stats_seq2squiggle_ideal_fly:
     input:
-        ref="data/d-melanogaster/GCF_000001215.4_Release_6_plus_ISO1_MT_genomic.fna",
+        ref=config["d_melanogaster_ref"],
         sam=rules.align_seq2squiggle_nonoise_fly.output
     output:
         "results/d-melanogaster-noise/seq2squiggle-no-noise.npz",
@@ -102,7 +102,7 @@ rule sam_stats_seq2squiggle_ideal_fly:
 
 rule sam_stats_seq2squiggle_manualnoise_fly:
     input:
-        ref="data/d-melanogaster/GCF_000001215.4_Release_6_plus_ISO1_MT_genomic.fna",
+        ref=config["d_melanogaster_ref"],
         sam=rules.align_seq2squiggle_manualnoise_fly.output,
     output:
         "results/d-melanogaster-noise/seq2squiggle-static-NS.npz",
@@ -122,7 +122,7 @@ rule sam_stats_seq2squiggle_manualnoise_fly:
 
 rule sam_stats_seq2squiggle_noisesampler_fly:
     input:
-        ref="data/d-melanogaster/GCF_000001215.4_Release_6_plus_ISO1_MT_genomic.fna",
+        ref=config["d_melanogaster_ref"],
         sam=rules.align_seq2squiggle_noisesampler_fly.output,
     output:
         "results/d-melanogaster-noise/seq2squiggle-NS.npz",
@@ -143,7 +143,7 @@ rule sam_stats_seq2squiggle_noisesampler_fly:
 
 rule sam_stats_seq2squiggle_lengthregulator_fly:
     input:
-        ref="data/d-melanogaster/GCF_000001215.4_Release_6_plus_ISO1_MT_genomic.fna",
+        ref=config["d_melanogaster_ref"],
         sam=rules.align_seq2squiggle_lengthregulator_fly.output,
     output:
         "results/d-melanogaster-noise/seq2squiggle-DS.npz",
@@ -163,7 +163,7 @@ rule sam_stats_seq2squiggle_lengthregulator_fly:
 
 rule sam_stats_seq2squiggle_lengthregulator_and_manualnoise_fly:
     input:
-        ref="data/d-melanogaster/GCF_000001215.4_Release_6_plus_ISO1_MT_genomic.fna",
+        ref=config["d_melanogaster_ref"],
         sam=rules.align_seq2squiggle_lengthregulator_and_manualnoise_fly.output,
     output:
         "results/d-melanogaster-noise/seq2squiggle-DS-static-NS.npz",
@@ -183,7 +183,7 @@ rule sam_stats_seq2squiggle_lengthregulator_and_manualnoise_fly:
 
 rule sam_stats_seq2squiggle_manuallengthsampling_fly:
     input:
-        ref="data/d-melanogaster/GCF_000001215.4_Release_6_plus_ISO1_MT_genomic.fna",
+        ref=config["d_melanogaster_ref"],
         sam=rules.align_seq2squiggle_manuallengthsampling_fly.output,
     output:
         "results/d-melanogaster-noise/seq2squiggle-static-DS.npz",
@@ -203,7 +203,7 @@ rule sam_stats_seq2squiggle_manuallengthsampling_fly:
 
 rule sam_stats_seq2squiggle_lengthregulator_and_noisesampelr_fly:
     input:
-        ref="data/d-melanogaster/GCF_000001215.4_Release_6_plus_ISO1_MT_genomic.fna",
+        ref=config["d_melanogaster_ref"],
         sam=rules.align_seq2squiggle_lengthregulator_and_noisesampler_fly.output,
     output:
         "results/d-melanogaster-noise/seq2squiggle-DS-NS.npz",
@@ -223,7 +223,7 @@ rule sam_stats_seq2squiggle_lengthregulator_and_noisesampelr_fly:
 
 rule sam_stats_seq2squiggle_mLR_mNS_fly:
     input:
-        ref="data/d-melanogaster/GCF_000001215.4_Release_6_plus_ISO1_MT_genomic.fna",
+        ref=config["d_melanogaster_ref"],
         sam=rules.align_seq2squiggle_mLR_mNS_fly.output,
     output:
         "results/d-melanogaster-noise/seq2squiggle-static-DS-static-NS.npz",
@@ -244,7 +244,7 @@ rule sam_stats_seq2squiggle_mLR_mNS_fly:
 
 rule sam_stats_experimental_noise_fly:
     input:
-        ref="data/d-melanogaster/GCF_000001215.4_Release_6_plus_ISO1_MT_genomic.fna",
+        ref=config["d_melanogaster_ref"],
         sam=rules.align_reference_subset_fly.output
     output:
         "results/d-melanogaster-noise/experimental.npz",

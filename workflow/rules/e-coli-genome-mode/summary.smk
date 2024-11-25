@@ -1,9 +1,9 @@
-rule runtime_plot_gm:
+rule runtime_plot_gm_ecoli:
     input:
         squigulator=rules.run_squigulator_gm.benchmark,
         seq2squiggle=rules.run_seq2squiggle_gm.benchmark,
     output:
-        "results/runtime-plot.png"
+        "results/runtime-plot-ecoli.png"
     conda:
         "../../envs/plot-runtime.yml"
     shell:
@@ -12,12 +12,12 @@ rule runtime_plot_gm:
         """
 
 
-rule sam_stats_squigulator_gm:
+rule sam_stats_squigulator_gm_ecoli:
     input:
-        ref=config["human_ref"],
-        sam=rules.align_squigulator_gm.output
+        ref=config["e_coli_ref"],
+        sam=rules.align_squigulator_gm_ecoli.output
     output:
-        "results/human_gm/squigulator.npz",
+        "results/e-coli/squigulator.npz",
     threads: 128
     conda:
         "../../envs/sam-stats.yml"
@@ -32,12 +32,12 @@ rule sam_stats_squigulator_gm:
         python workflow/scripts/basecalling-stats.py evaluate --sam {input.sam} --ref {input.ref} --out {output}
         """
 
-rule sam_stats_seq2squiggle_gm:
+rule sam_stats_seq2squiggle_gm_ecoli:
     input:
-        ref=config["human_ref"],
-        sam=rules.align_seq2squiggle_gm.output
+        ref=config["e_coli_ref"],
+        sam=rules.align_seq2squiggle_gm_ecoli.output
     output:
-        "results/human_gm/seq2squiggle.npz",
+        "results/e-coli/seq2squiggle.npz",
     threads: 128
     conda:
         "../../envs/sam-stats.yml"
@@ -52,12 +52,12 @@ rule sam_stats_seq2squiggle_gm:
         python workflow/scripts/basecalling-stats.py evaluate --sam {input.sam} --ref {input.ref} --out {output}
         """
 
-rule sam_stats_experimental_gm:
+rule sam_stats_experimental_gm_ecoli:
     input:
-        ref=config["human_ref"],
-        sam=rules.align_reference_subset.output
+        ref=config["e_coli_ref"],
+        sam=rules.align_reference_subset_ecoli.output
     output:
-        "results/human_gm/experimental.npz",
+        "results/e-coli/experimental.npz",
     threads: 128
     conda:
         "../../envs/sam-stats.yml"
@@ -72,13 +72,13 @@ rule sam_stats_experimental_gm:
         python workflow/scripts/basecalling-stats.py evaluate --sam {input.sam} --ref {input.ref} --out {output}
         """
 
-rule plot_sam_stats_gm:
+rule plot_sam_stats_gm_ecoli:
     input:
-        seq2squiggle=rules.sam_stats_seq2squiggle_gm.output,
-        squigulator=rules.sam_stats_squigulator_gm.output,
-        experimental=rules.sam_stats_experimental_gm.output,
+        seq2squiggle=rules.sam_stats_seq2squiggle_gm_ecoli.output,
+        squigulator=rules.sam_stats_squigulator_gm_ecoli.output,
+        experimental=rules.sam_stats_experimental_gm_ecoli.output,
     output:
-        directory("results/human_gm/plots"),
+        directory("results/e-coli/plots"),
     threads: 128
     conda:
         "../../envs/sam-stats.yml"
@@ -93,19 +93,17 @@ rule plot_sam_stats_gm:
         python workflow/scripts/basecalling-stats.py plot --outdir {output} {input.seq2squiggle} {input.squigulator} {input.experimental}
         """
 
-rule publish_results_gm:
+rule publish_results_gm_ecoli:
     input:
-        plots=rules.plot_sam_stats_gm.output,
-        runtime_plot=rules.runtime_plot_gm.output,
+        plots=rules.plot_sam_stats_gm_ecoli.output,
+        runtime_plot=rules.runtime_plot_gm_ecoli.output,
         config="config/config.yml",
         config_seq2squiggle="config/seq2squiggle-config.yml"
     output:
-        directory("summary/human-genome-mode/")
+        directory("summary/e-coli/")
     log:
         "results/logs/publish-summary-gm.log",
     shell:
-        # Save the config file as well since we often run the different parts
-        # of the benchmark at different times
         """
         mkdir -p {output}
         cp -r {input.runtime_plot} {output}

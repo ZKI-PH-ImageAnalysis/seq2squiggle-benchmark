@@ -15,6 +15,8 @@ from matplotlib.collections import PathCollection
 import logging
 import warnings
 logger = logging.getLogger("basecalling-stats")
+import matplotlib.colors as mcolors
+from matplotlib.colors import LinearSegmentedColormap
 
 
 base2index = {"A":0, "C":1, "G":2, "T":3, "_":4}
@@ -893,25 +895,40 @@ def plot(
     type=click.Path(dir_okay=True),
     help="Path to reference exported picture",
 )
+@click.option(
+    "--group_labels",
+    type=str,
+    default="seq2squiggle,squigulator,experimental",  # Default values if not provided
+    help="Comma-separated list of group labels, e.g. 'seq2squiggle,squigulator,experimental'",
+)
+@click.option(
+    "--experiment_labels",
+    type=str,
+    default="Human Read Mode,Human Genome Mode,D. melanogaster Genome Mode",  # Default values if not provided
+    help="Comma-separated list of experiment labels, e.g. 'Human Read Mode,Human Genome Mode,D. melanogaster Genome Mode'",
+)
 def groupplot(
-    npz,
-    outdir,
+    npz, outdir, group_labels, experiment_labels
 ):  
     
     setup_logging("info")
     if not os.path.exists(outdir):
         os.makedirs(outdir)
-    # TODO They need to be in correct order seq2squiggle - squigulator - experimental
 
-    if len(npz) != 9:
-        logger.error("Something is incorrect. You should select 3 npz files! Please check!")
+    # Convert the comma-separated strings to lists
+    group_labels = group_labels.split(',')
+    experiment_labels = experiment_labels.split(',')
+    
+    # TODO They need to be in correct order seq2squiggle - squigulator - experimental
+    #if len(npz) // len(group_labels) != 0:
+    #    logger.error("Something is incorrect. Please check!")
 
 
     names = [os.path.basename(file).split(".npz")[0] for file in npz]
     npzfiles = [np.load(file, allow_pickle=True) for file in npz]
-    group_labels = ["seq2squiggle", "squigulator", "experimental"]
-    experiment_labels = ["Human Read Mode", "Human Genome Mode", "D. melanogaster Genome Mode"]
-    groups = len(npz) // 3
+    groups = len(npz) // len(group_labels)
+    tools = len(experiment_labels)
+
 
 
     # GROUPED BOX PLOTS
@@ -1220,22 +1237,44 @@ def groupplot(
     type=click.Path(dir_okay=True),
     help="Path to reference exported picture",
 )
+@click.option(
+    "--group_labels",
+    type=str,
+    default="seq2squiggle,squigulator,experimental",  # Default values if not provided
+    help="Comma-separated list of group labels, e.g. 'seq2squiggle,squigulator,experimental'",
+)
+@click.option(
+    "--experiment_labels",
+    type=str,
+    default="Human Read Mode,Human Genome Mode,D. melanogaster Genome Mode",  # Default values if not provided
+    help="Comma-separated list of experiment labels, e.g. 'Human Read Mode,Human Genome Mode,D. melanogaster Genome Mode'",
+)
 def groupplotfigure(
-    npz,
-    outdir,
+    npz, outdir, group_labels, experiment_labels
 ):  
     setup_logging("info")
     if not os.path.exists(outdir):
         os.makedirs(outdir)
 
-    if len(npz) != 9:
-        logger.error("Something is incorrect. You should select 3 npz files! Please check!")
+    setup_logging("info")
+    if not os.path.exists(outdir):
+        os.makedirs(outdir)
+
+    # Convert the comma-separated strings to lists
+    group_labels = group_labels.split(',')
+    experiment_labels = experiment_labels.split(',')
+    
+    # TODO They need to be in correct order seq2squiggle - squigulator - experimental
+    #if len(npz) // len(group_labels) != 0:
+    #    logger.error("Something is incorrect. Please check!")
+
 
     names = [os.path.basename(file).split(".npz")[0] for file in npz]
     npzfiles = [np.load(file, allow_pickle=True) for file in npz]
-    group_labels = ["seq2squiggle", "squigulator", "experimental"]
-    experiment_labels = ["Human\nRead Mode", "Human\nGenome Mode", "D. melanogaster\nGenome Mode"]
-    groups = len(npz) // 3
+    groups = len(npz) // len(group_labels)
+    tools = len(group_labels)
+
+    
 
     # Extract metrics
     align_r_l = [100*npzfile["align_r"] for npzfile in npzfiles]
@@ -1251,8 +1290,8 @@ def groupplotfigure(
     aucs = []
     data = []
     for i in range(groups):
-        for j in range(3):
-            index = i * 3 + j
+        for j in range(tools):
+            index = i * tools + j
             group_name = group_labels[j]
             dataset_name = experiment_labels[i]
             
@@ -1279,9 +1318,9 @@ def groupplotfigure(
     def prepare_boxplot_data(metric_data, metric_name):
         data = []
         for i in range(groups):
-            for j in range(3):
+            for j in range(tools):
                 group_name = group_labels[j]
-                rates = metric_data[i * 3 + j]
+                rates = metric_data[i * tools + j]
                 if isinstance(rates, np.ndarray) or isinstance(rates, list):
                     for rate in rates:
                         data.append([group_name, rate, experiment_labels[i]])
@@ -1299,18 +1338,18 @@ def groupplotfigure(
     # Prepare DataFrame for grouped bar plot
     pass_data = []
     for i in range(groups):
-        for j in range(3):
+        for j in range(tools):
             group_name = group_labels[j]
-            rate = pass_l[i * 3 + j]  # Access the rate directly
+            rate = pass_l[i * tools + j]  # Access the rate directly
             pass_data.append([group_name, rate, experiment_labels[i]])
     pass_df = pd.DataFrame(pass_data, columns=['Group', 'Rate', 'Dataset'])
 
     # Prepare data for Q-score violin plot
     q_data = []
     for i in range(groups):
-        for j in range(3):
+        for j in range(tools):
             group_name = group_labels[j]
-            q_scores = q_score_l[i * 3 + j]
+            q_scores = q_score_l[i * tools + j]
             for score in q_scores:
                 q_data.append([group_name, score, experiment_labels[i]])
     q_df = pd.DataFrame(q_data, columns=['Group', 'Q Score', 'Dataset'])
@@ -1319,9 +1358,9 @@ def groupplotfigure(
     # Prepare data for read length
     read_len_data = []
     for i in range(groups):
-        for j in range(3):
+        for j in range(tools):
             group_name = group_labels[j]
-            read_lens = read_len_l[i * 3 + j]
+            read_lens = read_len_l[i * tools + j]
             for read_l in read_lens:
                 read_len_data.append([group_name, read_l, experiment_labels[i]])
     readlength_df = pd.DataFrame(read_len_data, columns=['Group', 'Read length', 'Dataset'])
@@ -1350,7 +1389,7 @@ def groupplotfigure(
     axes[1, 0].text(-0.1, 1.1, 'C', transform=axes[1, 0].transAxes, 
                     size=20, weight='bold')
     axes[1, 0].set(xlabel='')
-    axes[1, 0].set_ylim(bottom=0)  
+    # axes[1, 0].set_ylim(bottom=0)  
 
     sns.boxplot(ax=axes[1, 1], x='Dataset', y='Rate', hue='Group', data=mismatch_df, showfliers=False)
     axes[1, 1].set_title('Mismatch rate')
@@ -1421,7 +1460,7 @@ def groupplotfigure(
     
     # Remove individual legends and add a shared legend
     handles, labels = axes[0, 0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc='lower center', ncol=3, frameon=True, fontsize='large', bbox_to_anchor=(0.5, 0.005))
+    fig.legend(handles, labels, loc='lower center', ncol=3, frameon=True, fontsize='large', bbox_to_anchor=(0.5, -0.008))
     for ax in axes.flatten():
         ax.get_legend().remove()
 
@@ -1563,6 +1602,114 @@ def groupplotfigure(
     # Save the plot
     outfile = os.path.join(outdir, "SuppFigureHOMOPOLYMER.png")
     plt.savefig(outfile, dpi=300)
+    plt.close()
+
+@main.command()
+@click.argument(
+    "npz",
+    required=True,
+    nargs=-1,
+    type=click.Path(dir_okay=False),
+)
+@click.option(
+    "--noise_stds",
+    type=str,
+    help="List of noise standard deviations, e.g., 0.0 1.0 2.0",
+)
+@click.option(
+    "--dwell_stds",
+    type=str,
+    help="List of dwell standard deviations, e.g., 0.0 1.0 2.0",
+)
+@click.option(
+    "--out",
+    required=True,
+    type=click.Path(dir_okay=True),
+    help="Path to reference exported picture",
+)
+@click.option(
+    "--colormap",
+    default="Blues",  # Add an option for colormap
+    type=str,
+    help="Color map for the heatmap (e.g., 'Blues', 'coolwarm', etc.)",
+)
+@click.option(
+    "--toolname",
+    default="seq2squiggle",  # Add an option for colormap
+    type=str,
+    help="Name of the tool",
+)
+def plot_heatmap(npz, noise_stds, dwell_stds, out, colormap, toolname):
+    out_dir = os.path.dirname(out)
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+
+    dwell_stds = [float(x) for x in dwell_stds.split(',')]
+    noise_stds = [float(x) for x in noise_stds.split(',')]
+
+    heatmap_data = np.zeros((len(dwell_stds), len(noise_stds)))
+
+    dwell_stds_sorted = sorted(dwell_stds, reverse=True)
+    noise_stds_sorted = sorted(noise_stds)
+
+    # Create mappings from std values to index positions
+    dwell_map = {v: i for i, v in enumerate(dwell_stds_sorted)}
+    noise_map = {v: i for i, v in enumerate(noise_stds_sorted)}
+
+    
+    # Updated regular expression to extract dwell_std and noise_std from the file path
+    pattern = r"dwell-(\d+\.\d+)_noise-(\d+\.\d+)"
+
+
+    for npz_file in npz:
+        # Extract dwell_std and noise_std from the file path using regex
+        match = re.search(pattern, npz_file)
+        if match:
+            dwell_std = float(match.group(1))
+            noise_std = float(match.group(2))
+
+            data = np.load(npz_file, allow_pickle=True)
+
+            num_reads = len(data['match_r'])
+        
+            # Only calculate the metric if we have at least 50 reads
+            if num_reads >= 50:
+                metric_value = np.median(100 * data['match_r'])
+            else:
+                metric_value = np.nan  
+
+            # Get row and column indices for the heatmap data
+            row = dwell_map.get(dwell_std)
+            col = noise_map.get(noise_std)
+
+            # Update the heatmap data if row and col are valid
+            if row is not None and col is not None:
+                heatmap_data[row, col] = metric_value
+        else:
+            print(f"Pattern not found in {npz_file}, skipping.")
+
+    # Custom colormap (from orange to lighter orange)
+    # Use a specified colormap, default is 'Blues'
+    cmap = plt.get_cmap(colormap)
+
+    sns.set_theme(style="white")
+    sns.set_context("paper", font_scale=1.5)
+    # Plot the heatmap
+    plt.figure(figsize=(10, 8))
+    ax = sns.heatmap(
+        heatmap_data,
+        xticklabels=noise_stds,
+        yticklabels=sorted(dwell_stds, reverse=True),  # Sort dwell_stds to have the Y-axis from 0.0 to 4.0
+        cmap=cmap,
+        annot=True,  # Annotate the cells with the metric values
+        fmt=".2f",  # Format the annotations to show 2 decimal places
+        annot_kws={"size": 10, "weight": "bold", "color": "black"},  # Customize annotation appearance
+    )
+    
+    plt.xlabel("Amplitude Noise Standard deviation")
+    plt.ylabel("Dwell Noise Standard deviation")
+    plt.title(f"Median match rate for {toolname}")
+    plt.savefig(out, dpi=600)
     plt.close()
         
 

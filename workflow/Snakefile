@@ -1,17 +1,28 @@
 from snakemake.utils import min_version
+from itertools import product  
 
 min_version("7.12.1")
 
 configfile: "config/config.yml"
 
+# Generate combinations of dwell_std and noise_std
+combinations = [(dwell, noise) for dwell, noise in product(config["dwell_std_values"], config["noise_std_values"])]
+
+
 rule all:
     input:
-        "summary/human-genome-mode/",
         "summary/human-read-mode/",
-        "summary/d-melanogaster/",
+        "summary/human-genome-mode/",
+        "summary/human-genome-mode-R9/",
         "summary/variants/",
+        "summary/variants_R9/",
+        "summary/d-melanogaster/",
         "summary/d-melanogaster-noise/",
+        expand("summary/{tool}_heatmap.png", tool=config["tools"]),
         "summary/group-plots/",
+        "summary/e-coli/",
+        "summary/sars-cov-R9/",
+        "summary/variants-all/snp-plots"
         
 
 # Some helper functions and rules
@@ -19,20 +30,38 @@ include: "rules/common.smk"
 # Generating input files
 include: "rules/d-melanogaster-genome-mode/input.smk"
 include: "rules/human-genome-mode/input.smk"
+include: "rules/human-genome-mode-R9/input.smk"
+include: "rules/e-coli-genome-mode/input.smk"
+include: "rules/sars-cov-genome-mode-R9/input.smk"
 # Read mode - Human
 include: "rules/human-read-mode/benchmark.smk"
 include: "rules/human-read-mode/summary.smk"
 # Genome mode - Human
 include: "rules/human-genome-mode/benchmark.smk"
 include: "rules/human-genome-mode/summary.smk"
+# Genome mode R9 - Human
+include: "rules/human-genome-mode-R9/benchmark.smk"
+include: "rules/human-genome-mode-R9/summary.smk"
+# Genome mode R9 - SARSCoV
+include: "rules/sars-cov-genome-mode-R9/benchmark.smk"
+include: "rules/sars-cov-genome-mode-R9/summary.smk"
 # Variant calling - Human
 include: "rules/human-variant-calling/variant_calling.smk"
+# Variant calling R9 - Human
+include: "rules/human-variant-calling/variant_calling_R9.smk"
 # Genome mode - Fruit fly
 include: "rules/d-melanogaster-genome-mode/benchmark.smk"
 include: "rules/d-melanogaster-genome-mode/summary.smk"
+# Genome mode - E. coli
+include: "rules/e-coli-genome-mode/benchmark.smk"
+include: "rules/e-coli-genome-mode/summary.smk"
 # Noise study - Fruit fly
 include: "rules/d-melanogaster-noise-study/benchmark_seq2squiggle.smk"
 include: "rules/d-melanogaster-noise-study/benchmark_squigulator.smk"
 include: "rules/d-melanogaster-noise-study/summary.smk"
+# Noise study - Fruit fly heatplots
+include: "rules/d-melanogaster-noise-study-heatplot/benchmark_seq2squiggle.smk"
+include: "rules/d-melanogaster-noise-study-heatplot/benchmark_squigulator.smk"
+include: "rules/d-melanogaster-noise-study-heatplot/summary.smk"
 # Group plots
 include: "rules/group-plots/summary.smk"

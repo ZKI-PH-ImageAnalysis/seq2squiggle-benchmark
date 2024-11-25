@@ -1,44 +1,8 @@
-# Download VCF file
-import os
-from snakemake.remote.HTTP import RemoteProvider as HTTPRemoteProvider
-
-HTTP = HTTPRemoteProvider()
-
-#localrules:
-#    download_vcf,
-
-#rule download_vcf:
-#    input:
-#        HTTP.remote(config["human_reference_genome"]),
-#    output:
-#        "data/zymo-human/variants/",
-#    log:
-#        "results/logs/runtime/download-data.log",
-#    run:
-#        shell("mv {input} {output}")
-
-#rule download_genome:
-#    input:
-#        HTTP.remote(config["human_signal_data"]),
-#    output:
-#        "data/zymo-human/GRCh38_no_alt.fna",
-#    log:
-#        "results/logs/runtime/download-human-genome.log",
-#    run:
-#        shell("mv {input} {output}")
-
-
-# https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/NA12878_HG001/latest/GRCh38/HG001_GRCh38_1_22_v4.2.1_benchmark.vcf.gz
-
-# 3.3.2 used in squigulator
-# https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/NA12878_HG001/NISTv3.3.2/GRCh38/HG001_GRCh38_GIAB_highconf_CG-IllFB-IllGATKHC-Ion-10X-SOLID_CHROM1-X_v.3.3.2_highconf_PGandRTGphasetransfer.vcf.gz
-# 
-
 rule extract_chr_from_genome:
     input:
-        "data/zymo-human/GRCh38_no_alt.fna"
+        config["human_ref"],
     output:
-        "data/zymo-human/variants/CRCh38_chr.fna",
+        "data/processed-data/variants/CRCh38_chr.fna",
     conda:
         "../../envs/minimap2.yml"
     params:
@@ -96,14 +60,13 @@ rule extract_repeat_regions:
         python workflow/scripts/convert_trt_to_bed.py {output.trf} {output.bed}
         """
 
-
 rule filter_vcf_reference:
     input:
-        vcf="data/zymo-human/variants/HG001_GRCh38_GIAB_highconf_CG-IllFB-IllGATKHC-Ion-10X-SOLID_CHROM1-X_v.3.3.2_highconf_PGandRTGphasetransfer.vcf.gz",
-        bed="data/zymo-human/variants/HG001_GRCh38_GIAB_highconf_CG-IllFB-IllGATKHC-Ion-10X-SOLID_CHROM1-X_v.3.3.2_highconf_nosomaticdel_noCENorHET7.bed",
+        vcf=config["human_vcf"],
+        bed=config["human_bed"],
     output:
-        vcf="data/zymo-human/variants/highconf_PGandRTGphasetransfer_filtered.vcf.gz",
-        bed="data/zymo-human/variants/highconf_nosomaticdel_noCENorHET7_filtered.bed",
+        vcf="data/input-data/variants/highconf_PGandRTGphasetransfer_filtered.vcf.gz",
+        bed="data/input-data/variants/highconf_nosomaticdel_noCENorHET7_filtered.bed",
     conda:
         "../../envs/bcftools.yml"
     threads: 128
@@ -125,9 +88,9 @@ rule generate_variant_genome:
         vcf=rules.filter_vcf_reference.output.vcf,
         genome=rules.extract_chr_from_genome.output
     output:
-        out="data/zymo-human/variants/CRCh38_chr_variants.fna",
-        hap1="data/zymo-human/variants/hap1.fa",
-        hap2="data/zymo-human/variants/hap2.fa",
+        out="data/processed-data/variants/CRCh38_chr_variants.fna",
+        hap1="data/processed-data/variants/hap1.fa",
+        hap2="data/processed-data/variants/hap2.fa",
     conda:
         "../../envs/bcftools.yml"
     threads: 128
@@ -151,8 +114,8 @@ rule run_squigulator_variant:
     output:
         "results/variants/squigulator_reads.slow5",
     params:
-        sample_rate=config["subsample-human"],
-        commands=config["variant_calling"]["squigulator"]
+        sample_rate=config["subsample-variants"],
+        commands=config["variant_calling"]["squigulator"],
     threads: 128
     log:
         "results/logs/run_squigulator_variant.log",
@@ -162,29 +125,27 @@ rule run_squigulator_variant:
         mem_mb=150000,   
     shell:
         """
-        resources/squigulator/squigulator {params.commands} {input} -o {output}
+        resources/squigulator-v0.4.0/squigulator {params.commands} -n {params.sample_rate} {input} -o {output} 
         """
 
-rule fix_squigulator_slow5_variant:
+rule blow5_to_pod5_squigulator_variant:
     input:
         rules.run_squigulator_variant.output,
     output:
-        "results/variants/squigulator_reads_fixed.slow5",
-    threads: 8
-    log:
-        "results/logs/fix_squigulator_slow5_variant.log",
-    resources:
-        disk_mb=50000,
-        runtime=add_slack(50),
-        mem_mb=100000,   
+        "results/variants/squigulator_reads.pod5"
+    conda:
+        "../../envs/blue-crab.yml"
+    threads: 128
+    conda:
+        "../../envs/minimap2.yml"
     shell:
         """
-        awk 'BEGIN {{FS="\\t"; OFS="\\t"}} /^[@#]/ {{print; next}} {{split($1, a, "!"); $1 = a[2]; print}}' {input} > {output}
-        """
+        blue-crab s2p {input} -o {output}
+        """        
 
 rule basecall_squigulator_variant:
     input:
-        rules.fix_squigulator_slow5_variant.output,
+        rules.blow5_to_pod5_squigulator_variant.output,
     output:
         "results/variants/squigulator_reads.fastq"
     params:
@@ -196,11 +157,11 @@ rule basecall_squigulator_variant:
         disk_mb=500000,
         runtime=add_slack(1000),
         mem_mb=100000,
-        slurm="gpus=4",
+        slurm="gpus=1",
         partition="zki",   
     shell:
         """
-        buttery-eel -i {input} -o {output} -x \"cuda:all\" -g resources/ont-guppy-6_5_7/bin/ --config {params.model} --use_tcp --port 8015 --slow5_threads 32
+        ./resources/dorado-0.8.0-linux-x64/bin/dorado basecaller --emit-fastq {params.model} {input} > {output}
         """
 
 rule remove_header_squigulator_fastq_variant:
@@ -267,7 +228,7 @@ rule variantcall_squigulator:
     input:
         ref_genome=rules.extract_chr_from_genome.output,
         bam=rules.sort_index_squigulator.output,
-        model="resources/clair3-models/r1041_e82_400bps_sup_v410"
+        model=config["clair3_model_path"]
     output:
         directory("results/variants/squigulator-vcf/"),
     params:
@@ -294,12 +255,14 @@ rule run_seq2squiggle_variants:
         model=rules.train_seq2squiggle.output,
         fastq=rules.generate_variant_genome.output.out,
         config="config/seq2squiggle-config.yml",
+        installed=rules.install_poetry.output,
     output:
         "results/variants/seq2squiggle_reads.slow5"
     params:
-        commands=config["variant_calling"]["seq2squiggle"]
+        commands=config["variant_calling"]["seq2squiggle"],
+        sample_rate=config["subsample-variants"],
     conda:
-        "../../envs/seq2squiggle.yml"
+        "../../envs/seq2squiggle-dev-copy.yml"
     log:
         "results/logs/run_seq2squiggle_variants.log"
     threads: 128
@@ -311,28 +274,28 @@ rule run_seq2squiggle_variants:
         partition="zki", 
     shell:
         """
-        resources/seq2squiggle/src/seq2squiggle/seq2squiggle.py predict --config {input.config} --model {input.model} {params.commands} -o {output} {input.fastq}
+        poetry -C resources/seq2squiggle/ run seq2squiggle predict --config {input.config} --model {input.model} {params.commands} -n {params.sample_rate} -o {output} {input.fastq}
         """
-rule fix_seq2squiggle_slow5_variants:
+
+
+rule blow5_to_pod5_seq2squiggle_variant:
     input:
         rules.run_seq2squiggle_variants.output,
     output:
-        "results/variants/seq2squiggle_reads_fixed.slow5",
-    threads: 8
-    log:
-        "results/logs/seq2squiggle-fixslow5.log",
-    resources:
-        disk_mb=50000,
-        runtime=add_slack(50),
-        mem_mb=100000,   
+        "results/variants/seq2squiggle_reads.pod5"
+    conda:
+        "../../envs/blue-crab.yml"
+    threads: 128
+    conda:
+        "../../envs/minimap2.yml"
     shell:
         """
-        awk 'BEGIN {{FS="\\t"; OFS="\\t"}} /^[@#]/ {{print; next}} {{split($1, a, "!"); $1 = a[2]; print}}' {input} > {output}
+        blue-crab s2p {input} -o {output}
         """
 
 rule basecall_seq2squiggle_variants:
     input:
-        rules.run_seq2squiggle_variants.output
+        rules.blow5_to_pod5_seq2squiggle_variant.output
     output:
         "results/variants/seq2squiggle_reads.fastq"
     params:
@@ -344,11 +307,11 @@ rule basecall_seq2squiggle_variants:
         disk_mb=500000,
         runtime=add_slack(1000),
         mem_mb=100000,
-        slurm="gpus=4",
+        slurm="gpus=1",
         partition="zki", 
     shell:
         """
-        buttery-eel -i {input} -o {output} -x \"cuda:all\" -g resources/ont-guppy-6_5_7/bin/ --config {params.model} --use_tcp --port 8045 --slow5_threads 32
+        ./resources/dorado-0.8.0-linux-x64/bin/dorado basecaller --emit-fastq {params.model} {input} > {output}
         """
 
 rule remove_header_seq2squiggle_fastq_variants:
@@ -416,7 +379,7 @@ rule variantcall_seq2squiggle:
     input:
         ref_genome=rules.extract_chr_from_genome.output,
         bam=rules.sort_index_seq2squiggle.output,
-        model="resources/clair3-models/r1041_e82_400bps_sup_v410"
+        model=config["clair3_model_path"]
     output:
         directory("results/variants/seq2squiggle-vcf/"),
     params:
@@ -439,10 +402,10 @@ rule variantcall_seq2squiggle:
 
 rule rtg_index_format:
     input:
-        ref_genome="data/zymo-human/GRCh38_no_alt.fna",
+        ref_genome=config["human_ref"],
         true=rules.filter_vcf_reference.output.vcf
     output:
-        directory("data/zymo-human/variants/CRCh38_all"),
+        directory("data/zymo-human-methylated/variants/CRCh38_all"),
     conda:
         "../../envs/clair3.yml"
     threads: 128
@@ -743,7 +706,6 @@ rule plot_variants_region:
         """
 
 
-
 rule sam_stats_seq2squiggle_variants:
     input:
         ref=rules.extract_chr_from_genome.output,
@@ -822,7 +784,8 @@ rule plot_rtg_weighted_roc:
         mem_mb=10000,    
     shell:
         """
-        python workflow/scripts/rocplot.py --outdir {output} {input.seq2squiggle}/weighted_roc.tsv.gz {input.squigulator}/weighted_roc.tsv.gz
+        python workflow/scripts/rocplot.py --outdir {output} {input.seq2squiggle}/weighted_roc.tsv.gz {input.squigulator}/weighted_roc.tsv.gz \
+        --tools seq2squiggle squigulator
         """
 
 
@@ -843,7 +806,8 @@ rule plot_rtg_snp_roc:
         mem_mb=10000,    
     shell:
         """
-        python workflow/scripts/rocplot.py --outdir {output} {input.seq2squiggle}/snp_roc.tsv.gz {input.squigulator}/snp_roc.tsv.gz
+        python workflow/scripts/rocplot.py --outdir {output} {input.seq2squiggle}/snp_roc.tsv.gz {input.squigulator}/snp_roc.tsv.gz \
+        --tools seq2squiggle squigulator
         """
 
 
@@ -864,7 +828,8 @@ rule plot_rtg_indel_roc:
         mem_mb=10000,    
     shell:
         """
-        python workflow/scripts/rocplot.py --outdir {output} {input.seq2squiggle}/non_snp_roc.tsv.gz {input.squigulator}/non_snp_roc.tsv.gz
+        python workflow/scripts/rocplot.py --outdir {output} {input.seq2squiggle}/non_snp_roc.tsv.gz {input.squigulator}/non_snp_roc.tsv.gz \
+        --tools seq2squiggle squigulator
         """
 
 rule publish_results_variants:

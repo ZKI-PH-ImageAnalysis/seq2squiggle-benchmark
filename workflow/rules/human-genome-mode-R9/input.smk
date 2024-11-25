@@ -2,11 +2,11 @@
 # ./slow5curl reads https://gtgseq.s3.amazonaws.com/ont-r10-5khz-dna/NA24385/raw/PGXXXX230339_reads.blow5 > allreads.txt
 # ./slow5curl get --listallreads.txt https://gtgseq.s3.amazonaws.com/ont-r10-5khz-dna/NA24385/raw/PGXXXX230339_reads.blow5 -o selected.blow5
 
-rule blow5_to_pod5_human_all:
+rule blow5_to_pod5_human_all_R9:
     input:
-        config["human_signal"],
+        config["human_signal_R9"],
     output:
-        "data/processed-data/reads.pod5"
+        "data/processed-data/R9/reads.pod5"
     threads: 128
     conda:
         "../../envs/minimap2.yml"
@@ -15,13 +15,13 @@ rule blow5_to_pod5_human_all:
         blue-crab s2p {input} -o {output}
         """
 
-rule basecall_human_all_uncalled4:
+rule basecall_human_all_uncalled4_R9:
     input:
-        rules.blow5_to_pod5_human_all.output,
+        rules.blow5_to_pod5_human_all_R9.output,
     output:
-        "data/processed-data/reads.sam",
+        "data/processed-data/R9/reads.sam",
     params:
-        model=config["basecalling_model"]
+        model=config["basecalling_model_R9"]
     threads: 64
     log:
         "results/logs/basecall-human-all.log",
@@ -38,11 +38,11 @@ rule basecall_human_all_uncalled4:
 
 # TODO Filter reads below Q-Score of 9?
 
-rule sam_to_fastq_all:
+rule sam_to_fastq_all_R9:
     input:
-        rules.basecall_human_all_uncalled4.output
+        rules.basecall_human_all_uncalled4_R9.output
     output:
-        "data/processed-data/reads.fastq",
+        "data/processed-data/R9/reads.fastq",
     conda:
         "../../envs/minimap2.yml"
     threads: 128
@@ -58,12 +58,12 @@ rule sam_to_fastq_all:
         """
 
 
-rule align_reference_all_uncalled4:
+rule align_reference_all_uncalled4_R9:
     input:
-        seqs=rules.sam_to_fastq_all.output,
+        seqs=rules.sam_to_fastq_all_R9.output,
         ref=config["human_ref"],
     output:
-        "data/processed-data/reads.bam",
+        "data/processed-data/R9/reads.bam",
     params:
         commands=config["minimap2_commands"]
     conda:
@@ -80,11 +80,11 @@ rule align_reference_all_uncalled4:
         minimap2 -y {params.commands} -t {threads} {input.ref} {input.seqs} > {output}
         """
 
-rule sort_index_all_uncalled4:
+rule sort_index_all_uncalled4_R9:
     input:
-        rules.align_reference_all_uncalled4.output,
+        rules.align_reference_all_uncalled4_R9.output,
     output:
-        "data/processed-data/reads_all_sorted.bam"
+        "data/processed-data/R9/reads_all_sorted.bam"
     conda:
         "../../envs/minimap2.yml"
     threads: 128
@@ -101,13 +101,13 @@ rule sort_index_all_uncalled4:
         """
 
 
-rule samtools_split_chr_uncalled4:
+rule samtools_split_chr_uncalled4_R9:
     input:
-        rules.sort_index_all_uncalled4.output,
+        rules.sort_index_all_uncalled4_R9.output,
     output:
-        train="data/processed-data/reads_train.bam",
-        valid="data/processed-data/reads_valid.bam",
-        test="data/processed-data/reads_test.bam",
+        train="data/processed-data/R9/reads_train.bam",
+        valid="data/processed-data/R9/reads_valid.bam",
+        test="data/processed-data/R9/reads_test.bam",
     params:
         region_train=config["region_train"],
         region_valid=config["region_valid"],
@@ -129,11 +129,11 @@ rule samtools_split_chr_uncalled4:
         """
 
 
-rule sort_index_train:
+rule sort_index_train_R9:
     input:
-        rules.samtools_split_chr_uncalled4.output.train,
+        rules.samtools_split_chr_uncalled4_R9.output.train,
     output:
-        "data/processed-data/reads_train_sorted.bam"
+        "data/processed-data/R9/reads_train_sorted.bam"
     conda:
         "../../envs/minimap2.yml"
     threads: 128
@@ -149,11 +149,11 @@ rule sort_index_train:
         samtools index {output}
         """
 
-rule sort_index_valid:
+rule sort_index_valid_R9:
     input:
-        rules.samtools_split_chr_uncalled4.output.valid,
+        rules.samtools_split_chr_uncalled4_R9.output.valid,
     output:
-        "data/processed-data/reads_valid_sorted.bam"
+        "data/processed-data/R9/reads_valid_sorted.bam"
     conda:
         "../../envs/minimap2.yml"
     threads: 128
@@ -170,15 +170,15 @@ rule sort_index_valid:
         """
 
 
-rule uncalled4_eventalign_train:
+rule uncalled4_eventalign_train_R9:
     input:
-        bam=rules.sort_index_train.output,
+        bam=rules.sort_index_train_R9.output,
         ref=config["human_ref"],
-        slow5=config["human_signal"],
+        slow5=config["human_signal_R9"],
     output:
-        "data/processed-data/events-train.tsv"
+        "data/processed-data/R9/events-train.tsv"
     params:
-        commands=config["uncalled4_commands"]
+        commands=config["uncalled4_commands_R9"]
     threads: 128
     log: 
         "results/logs/uncalled4-align.log"
@@ -193,15 +193,15 @@ rule uncalled4_eventalign_train:
         """
 
 
-rule uncalled4_eventalign_valid:
+rule uncalled4_eventalign_valid_R9:
     input:
-        bam=rules.sort_index_valid.output,
+        bam=rules.sort_index_valid_R9.output,
         ref=config["human_ref"],
-        slow5=config["human_signal"],
+        slow5=config["human_signal_R9"],
     output:
-        "data/processed-data/events-valid.tsv"
+        "data/processed-data/R9/events-valid.tsv"
     params:
-        commands=config["uncalled4_commands"]
+        commands=config["uncalled4_commands_R9"]
     threads: 128
     log: 
         "results/logs/uncalled4-align.log"
@@ -216,11 +216,11 @@ rule uncalled4_eventalign_valid:
         """
 
 
-rule eventalign_train_norm:
+rule eventalign_train_norm_R9:
     input:
-        rules.uncalled4_eventalign_train.output
+        rules.uncalled4_eventalign_train_R9.output
     output:
-        "data/processed-data/events-train-norm.tsv"
+        "data/processed-data/R9/events-train-norm.tsv"
     conda:
         "../../envs/seq2squiggle-dev.yml"
     threads: 128
@@ -237,11 +237,11 @@ rule eventalign_train_norm:
         """
 
 
-rule eventalign_valid_norm:
+rule eventalign_valid_norm_R9:
     input:
-        rules.uncalled4_eventalign_valid.output
+        rules.uncalled4_eventalign_valid_R9.output
     output:
-        "data/processed-data/events-valid-norm.tsv"
+        "data/processed-data/R9/events-valid-norm.tsv"
     conda:
         "../../envs/seq2squiggle-dev.yml"
     threads: 128
@@ -259,16 +259,16 @@ rule eventalign_valid_norm:
 
 
 
-rule preprocess_train_seq2squiggle:
+rule preprocess_train_seq2squiggle_R9:
     input:
-        train=rules.eventalign_train_norm.output,
-        config="config/seq2squiggle-config.yml",
+        train=rules.eventalign_train_norm_R9.output,
+        config="config/seq2squiggle-config-R9.yml",
     output:
-        directory("results/train-human/seq2squiggle-train"),
+        directory("results/train-human-R9/seq2squiggle-train"),
     conda:
         "../../envs/seq2squiggle-dev.yml"
     benchmark:
-        "results/benchmarks/seq2squiggle_preprocess_train_r10.txt"
+        "results/benchmarks/seq2squiggle_preprocess_train_r9.txt"
     threads: 128
     log:
         "results/logs/preprocess_seq2squiggle.log",
@@ -285,16 +285,16 @@ rule preprocess_train_seq2squiggle:
         # --max-chunks 100000000 are ~ 3mil chunks if mapping is 32 to 500
 
 
-rule preprocess_valid_seq2squiggle:
+rule preprocess_valid_seq2squiggle_R9:
     input:
-        valid=rules.eventalign_valid_norm.output,
-        config="config/seq2squiggle-config.yml",
+        valid=rules.eventalign_valid_norm_R9.output,
+        config="config/seq2squiggle-config-R9.yml",
     output:
-        directory("results/train-human/seq2squiggle-valid"),
+        directory("results/train-human-R9/seq2squiggle-valid"),
     conda:
         "../../envs/seq2squiggle-dev.yml"
     benchmark:
-        "results/benchmarks/seq2squiggle_preprocess_valid_r10.txt"
+        "results/benchmarks/seq2squiggle_preprocess_valid_r9.txt"
     threads: 128
     log:
         "results/logs/preprocess_seq2squiggle.log",
@@ -310,23 +310,23 @@ rule preprocess_valid_seq2squiggle:
         """
 
 
-rule train_seq2squiggle:
+rule train_seq2squiggle_R9:
     input:
-        train_dir=rules.preprocess_train_seq2squiggle.output,
-        valid_dir=rules.preprocess_valid_seq2squiggle.output,
-        config="config/seq2squiggle-config.yml",
+        train_dir=rules.preprocess_train_seq2squiggle_R9.output,
+        valid_dir=rules.preprocess_valid_seq2squiggle_R9.output,
+        config="config/seq2squiggle-config-R9.yml",
     output:
-        "results/train-human/seq2squiggle-logs/last.ckpt",
+        "results/train-human-R9/seq2squiggle-logs/R9.ckpt",
     conda:
         "../../envs/seq2squiggle-dev.yml"
     benchmark:
-        "results/benchmarks/seq2squiggle_training_r10.txt"
+        "results/benchmarks/seq2squiggle_training_r9.txt"
     threads: 64
     log:
         "results/logs/train_seq2squiggle.log",
     resources:
         disk_mb=50000, 
-        runtime=add_slack(12000),
+        runtime=add_slack(9000),
         mem_mb=150000, #300000
         slurm="gpus=8, nodes=1",
         partition="zki",     
@@ -340,11 +340,11 @@ rule train_seq2squiggle:
         """
 
 
-rule test_bam_to_fastq:
+rule test_bam_to_fastq_R9:
     input:
-        rules.samtools_split_chr_uncalled4.output.test,
+        rules.samtools_split_chr_uncalled4_R9.output.test,
     output:
-        "data/processed-data/reads_test.fastq"
+        "data/processed-data/R9/reads_test.fastq"
     conda:
         "../../envs/minimap2.yml"
     threads: 64
@@ -360,15 +360,15 @@ rule test_bam_to_fastq:
         """
 
 
-rule subsample_slow5_data:
+rule subsample_slow5_data_R9:
     input:
-        fastq=rules.test_bam_to_fastq.output,
-        slow5=config["human_signal"],
+        fastq=rules.test_bam_to_fastq_R9.output,
+        slow5=config["human_signal_R9"],
     output:
-        read_l="data/processed-data/reads_subset.txt",
-        slow5="data/processed-data/reads_subset.slow5",
+        read_l="data/processed-data/R9/reads_subset.txt",
+        slow5="data/processed-data/R9/reads_subset.slow5",
     params:
-        sample_rate=config["subsample-human"],
+        sample_rate=config["subsample-human-R9"],
     threads: 128
     log:
         "results/logs/subsample-slow5-human.log",
@@ -385,11 +385,11 @@ rule subsample_slow5_data:
         resources/slow5tools-v1.1.0/slow5tools index {output.slow5}
         """
 
-rule blow5_to_pod5_human_subset:
+rule blow5_to_pod5_human_subset_R9:
     input:
-        rules.subsample_slow5_data.output.slow5,
+        rules.subsample_slow5_data_R9.output.slow5,
     output:
-        "data/processed-data/reads_subset.pod5"
+        "data/processed-data/R9/reads_subset.pod5"
     threads: 128
     conda:
         "../../envs/minimap2.yml"
@@ -398,13 +398,13 @@ rule blow5_to_pod5_human_subset:
         blue-crab s2p {input} -o {output}
         """
 
-rule basecall_human_subset:
+rule basecall_human_subset_R9:
     input:
-        rules.blow5_to_pod5_human_subset.output,
+        rules.blow5_to_pod5_human_subset_R9.output,
     output:
-        "data/processed-data/reads_subsample_pass.fastq",
+        "data/processed-data/R9/reads_subsample_pass.fastq",
     params:
-        model=config["basecalling_model"]
+        model=config["basecalling_model_R9"]
     threads: 128
     log:
         "results/logs/basecall_human_subset.log",
@@ -412,7 +412,7 @@ rule basecall_human_subset:
         disk_mb=50000,
         runtime=add_slack(900),
         mem_mb=100000,
-        slurm="gpus=1",
+        slurm="gpus=2",
         partition="zki,main",   
     shell:
         """
@@ -420,11 +420,11 @@ rule basecall_human_subset:
         """
 
 
-rule remove_header_fastq_subset:
+rule remove_header_fastq_subset_R9:
     input:
-        rules.basecall_human_subset.output,
+        rules.basecall_human_subset_R9.output,
     output:
-        "data/processed-data/reads_subsample_pass_fixed.fastq",
+        "data/processed-data/R9/reads_subsample_pass_fixed.fastq",
     threads: 64
     log:
         "results/logs/fix-fastq-header.log",
@@ -437,11 +437,11 @@ rule remove_header_fastq_subset:
         awk 'BEGIN {{ FS = " "; ORS = "\\n" }} /^@/ {{ print $1 }} !/^@/ {{ print }}' {input} > {output}
         """
 
-rule remove_short_reads_subset:
+rule remove_short_reads_subset_R9:
     input:
-        rules.remove_header_fastq_subset.output,
+        rules.remove_header_fastq_subset_R9.output,
     output:
-        "data/processed-data/reads_subsample_pass_fixed_2.fastq",
+        "data/processed-data/R9/reads_subsample_pass_fixed_2.fastq",
     params:
         max_len=config["max_seq_len"]
     threads: 64
@@ -456,12 +456,12 @@ rule remove_short_reads_subset:
         awk 'BEGIN {{FS = "\\t" ; OFS = "\\n"}} {{header = $0 ; getline seq ; getline qheader ; getline qseq ; if (length(seq) >= {params.max_len}) {{print header, seq, qheader, qseq}}}}' < {input} > {output}
         """
 
-rule align_reference_subset:
+rule align_reference_subset_R9:
     input:
-        seqs=rules.remove_short_reads_subset.output,
+        seqs=rules.remove_short_reads_subset_R9.output,
         ref=config["human_ref"],
     output:
-        "data/processed-data/reads_subsample_pass.sam",
+        "data/processed-data/R9/reads_subsample_pass.sam",
     params:
         commands=config["minimap2_commands"]
     conda:

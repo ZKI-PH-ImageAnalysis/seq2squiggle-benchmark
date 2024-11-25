@@ -1,29 +1,27 @@
 # Download genomes and pre-process by basecalling, assembly and nanopolish
 
-rule blow5_to_pod5_fly:
+rule blow5_to_pod5_sarscov_R9:
     input:
-        config["d_melanogaster_signal"],
+        config["sars_cov_signal"],
     output:
-        "data/processed-data/d-melanogaster/reads.pod5"
+        "data/processed-data/sars-cov-R9/reads.pod5"
     threads: 128
-    conda:
-        "../../envs/minimap2.yml"
     shell:
         """
         blue-crab s2p {input} -o {output}
         """
 
 
-rule basecall_fly_all:
+rule basecall_sarscov_R9_all:
     input:
-        rules.blow5_to_pod5_fly.output,
+        rules.blow5_to_pod5_sarscov_R9.output,
     output:
-        "data/processed-data/d-melanogaster/reads.fastq",
+        "data/processed-data/sars-cov-R9/reads.fastq",
     params:
-        model=config["basecalling_model"]
+        model=config["basecalling_model_R9"]
     threads: 64
     log:
-        "results/logs/basecall-fly-all.log",
+        "results/logs/basecall-sarscov_R9-all.log",
     resources:
         disk_mb=50000,
         runtime=add_slack(3600),
@@ -35,19 +33,19 @@ rule basecall_fly_all:
         ./resources/dorado-0.8.0-linux-x64/bin/dorado basecaller --emit-fastq {params.model} {input} > {output}
         """
 
-rule align_reference_all_fly:
+rule align_reference_all_sarscov_R9:
     input:
-        seqs=rules.basecall_fly_all.output,
-        ref=config["d_melanogaster_ref"],
+        seqs=rules.basecall_sarscov_R9_all.output,
+        ref=config["sars_cov_ref"],
     output:
-        "data/processed-data/d-melanogaster/reads.bam",
+        "data/processed-data/sars-cov-R9/reads.bam",
     params:
         commands=config["minimap2_commands"]
     conda:
         "../../envs/minimap2.yml"
     threads: 128
     log:
-        "results/logs/align-reference-fly-all.log",
+        "results/logs/align-reference-sarscov_R9-all.log",
     resources:
         disk_mb=50000,
         runtime=add_slack(2100),
@@ -57,11 +55,11 @@ rule align_reference_all_fly:
         minimap2 {params.commands} -t {threads} {input.ref} {input.seqs} > {output}
         """
 
-rule sort_index_bam_fly:
+rule sort_index_bam_sarscov_R9:
     input:
-        rules.align_reference_all_fly.output,
+        rules.align_reference_all_sarscov_R9.output,
     output:
-        "data/processed-data/d-melanogaster/reads_sorted.bam"
+        "data/processed-data/sars-cov-R9/reads_sorted.bam"
     conda:
         "../../envs/minimap2.yml"
     threads: 128
@@ -77,11 +75,11 @@ rule sort_index_bam_fly:
         samtools index {output}
         """
 
-rule test_bam_to_fastq_fly:
+rule test_bam_to_fastq_sarscov_R9:
     input:
-        rules.sort_index_bam_fly.output,
+        rules.sort_index_bam_sarscov_R9.output,
     output:
-        "data/processed-data/d-melanogaster/file_all.fastq"
+        "data/processed-data/sars-cov-R9/file_all.fastq"
     conda:
         "../../envs/minimap2.yml"
     threads: 64
@@ -97,18 +95,18 @@ rule test_bam_to_fastq_fly:
         """
 
 
-rule subsample_slow5_data_fly:
+rule subsample_slow5_data_sarscov_R9:
     input:
-        fastq=rules.test_bam_to_fastq_fly.output,
-        slow5=config["d_melanogaster_signal"] 
+        fastq=rules.test_bam_to_fastq_sarscov_R9.output,
+        slow5=config["sars_cov_signal"] 
     output:
-        read_l="data/processed-data/d-melanogaster/reads_subset.txt",
-        slow5="data/processed-data/d-melanogaster/reads_subset.slow5",
+        read_l="data/processed-data/sars-cov-R9/reads_subset.txt",
+        slow5="data/processed-data/sars-cov-R9/reads_subset.slow5",
     params:
-        sample_rate=config["subsample-fly"],
+        sample_rate=config["subsample-sarscov_R9"],
     threads: 128
     log:
-        "results/logs/subsample-slow5-fly.log",
+        "results/logs/subsample-slow5-sarscov_R9.log",
     resources:
         disk_mb=50000,
         mem_mb=100000,
@@ -122,11 +120,11 @@ rule subsample_slow5_data_fly:
         """
 
 
-rule blow5_to_pod5_fly_subset:
+rule blow5_to_pod5_sarscov_R9_subset:
     input:
-        rules.subsample_slow5_data_fly.output.slow5,
+        rules.subsample_slow5_data_sarscov_R9.output.slow5,
     output:
-        "data/processed-data/d-melanogaster/reads_subset.pod5"
+        "data/processed-data/sars-cov-R9/reads_subset.pod5"
     threads: 128
     conda:
         "../../envs/minimap2.yml"
@@ -136,16 +134,16 @@ rule blow5_to_pod5_fly_subset:
         """
 
 
-rule basecall_subset_fly:
+rule basecall_subset_sarscov_R9:
     input:
-        rules.blow5_to_pod5_fly_subset.output,
+        rules.blow5_to_pod5_sarscov_R9_subset.output,
     output:
-        "data/processed-data/d-melanogaster/reads_subsample_pass.fastq",
+        "data/processed-data/sars-cov-R9/reads_subsample_pass.fastq",
     params:
-        model=config["basecalling_model"]
+        model=config["basecalling_model_R9"]
     threads: 128
     log:
-        "results/logs/basecall_subset_fly.log",
+        "results/logs/basecall_subset_sarscov_R9.log",
     resources:
         disk_mb=50000,
         runtime=add_slack(900),
@@ -157,11 +155,11 @@ rule basecall_subset_fly:
         ./resources/dorado-0.8.0-linux-x64/bin/dorado basecaller --emit-fastq {params.model} {input} > {output}
         """
 
-rule remove_header_fastq_subset_fly:
+rule remove_header_fastq_subset_sarscov_R9:
     input:
-        rules.basecall_subset_fly.output,
+        rules.basecall_subset_sarscov_R9.output,
     output:
-        "data/processed-data/d-melanogaster/file_subsample_fixed.fastq",
+        "data/processed-data/sars-cov-R9/file_subsample_fixed.fastq",
     threads: 64
     log:
         "results/logs/fix-fastq-header.log",
@@ -174,11 +172,11 @@ rule remove_header_fastq_subset_fly:
         awk 'BEGIN {{ FS = " "; ORS = "\\n" }} /^@/ {{ print $1 }} !/^@/ {{ print }}' {input} > {output}
         """
 
-rule remove_short_reads_subset_fly:
+rule remove_short_reads_subset_sarscov_R9:
     input:
-        rules.remove_header_fastq_subset_fly.output,
+        rules.remove_header_fastq_subset_sarscov_R9.output,
     output:
-        "data/processed-data/d-melanogaster/file_subsample_fixed_2.fastq",
+        "data/processed-data/sars-cov-R9/file_subsample_fixed_2.fastq",
     params:
         max_len=config["max_seq_len"]
     threads: 64
@@ -193,12 +191,12 @@ rule remove_short_reads_subset_fly:
         awk 'BEGIN {{FS = "\\t" ; OFS = "\\n"}} {{header = $0 ; getline seq ; getline qheader ; getline qseq ; if (length(seq) >= {params.max_len}) {{print header, seq, qheader, qseq}}}}' < {input} > {output}
         """
 
-rule align_reference_subset_fly:
+rule align_reference_subset_sarscov_R9:
     input:
-        seqs=rules.remove_short_reads_subset_fly.output,
-        ref=config["d_melanogaster_ref"],
+        seqs=rules.remove_short_reads_subset_sarscov_R9.output,
+        ref=config["sars_cov_ref"],
     output:
-        "data/processed-data/d-melanogaster/file_subsample_pass.sam",
+        "data/processed-data/sars-cov-R9/file_subsample_pass.sam",
     params:
         commands=config["minimap2_commands"]
     conda:

@@ -74,8 +74,11 @@ rule plot_sam_stats_groupplots:
         fly_gm_seq2squiggle=rules.sam_stats_seq2squiggle_gm_fly.output,
         fly_gm_squigulator=rules.sam_stats_squigulator_gm_fly.output,
         fly_gm_exp=rules.sam_stats_experimental_gm_fly.output,
+        ecoli_seq2squiggle=rules.sam_stats_seq2squiggle_gm_ecoli.output,
+        ecoli_squigulator=rules.sam_stats_squigulator_gm_ecoli.output,
+        ecoli_exp=rules.sam_stats_experimental_gm_ecoli.output,
     output:
-        directory("results/group-plots"),
+        directory("results/group-plots/R10"),
     threads: 128
     conda:
         "../../envs/sam-stats.yml"
@@ -90,17 +93,61 @@ rule plot_sam_stats_groupplots:
         python workflow/scripts/basecalling-stats.py groupplot --outdir {output} \
         {input.human_rm_seq2squiggle} {input.human_rm_squigulator} {input.human_rm_exp} \
         {input.human_gm_seq2squiggle} {input.human_gm_squigulator} {input.human_gm_exp} \
-        {input.fly_gm_seq2squiggle} {input.fly_gm_squigulator} {input.fly_gm_exp}
+        {input.fly_gm_seq2squiggle} {input.fly_gm_squigulator} {input.fly_gm_exp} \
+        {input.ecoli_seq2squiggle} {input.ecoli_squigulator} {input.ecoli_exp} \
+        --group_labels seq2squiggle,squigulator,experimental \
+        --experiment_labels 'Human \nRead Mode,Human \nGenome Mode,D. melanogaster \nGenome Mode,E. coli \nGenome Mode'
 
         python workflow/scripts/basecalling-stats.py groupplotfigure --outdir {output} \
         {input.human_rm_seq2squiggle} {input.human_rm_squigulator} {input.human_rm_exp} \
         {input.human_gm_seq2squiggle} {input.human_gm_squigulator} {input.human_gm_exp} \
-        {input.fly_gm_seq2squiggle} {input.fly_gm_squigulator} {input.fly_gm_exp}
+        {input.fly_gm_seq2squiggle} {input.fly_gm_squigulator} {input.fly_gm_exp} \
+        {input.ecoli_seq2squiggle} {input.ecoli_squigulator} {input.ecoli_exp} \
+        --group_labels seq2squiggle,squigulator,experimental \
+        --experiment_labels 'Human \nRead Mode,Human \nGenome Mode,D. melanogaster \nGenome Mode,E. coli \nGenome Mode'
         """
+
+rule plot_sam_stats_groupplots_R9:
+    input:
+        human_gm_seq2squiggle=rules.sam_stats_seq2squiggle_gm_R9.output,
+        human_gm_squigulator=rules.sam_stats_squigulator_gm_R9.output,
+        human_gm_exp=rules.sam_stats_experimental_gm_R9.output,
+        human_gm_deepsimulator_CD=rules.sam_stats_deepsimulator_CI_gm_R9.output,
+        human_gm_deepsimulator_CI=rules.sam_stats_deepsimulator_CD_gm_R9.output,
+        sarscov_gm_seq2squiggle=rules.sam_stats_seq2squiggle_gm_sarscov_R9.output,
+        sarscov_gm_squigulator=rules.sam_stats_squigulator_gm_sarscov_R9.output,
+        sarscov_gm_exp=rules.sam_stats_experimental_gm_sarscov_R9.output,
+        sarscov_gm_deepsimulator_CD=rules.sam_stats_deepsimulator_CD_gm_sarscov_R9.output,
+        sarscov_gm_deepsimulator_CI=rules.sam_stats_deepsimulator_CI_gm_sarscov_R9.output,
+    output:
+        directory("results/group-plots/R9"),
+    threads: 128
+    conda:
+        "../../envs/sam-stats.yml"
+    log:
+        "results/logs/sam-stats-plot.log",
+    resources:
+        disk_mb=50000,
+        runtime=add_slack(900),
+        mem_mb=200000,  
+    shell:
+        """
+        python workflow/scripts/basecalling-stats.py groupplotfigure --outdir {output} \
+        {input.human_gm_seq2squiggle} {input.human_gm_squigulator} {input.human_gm_exp} \
+        {input.human_gm_deepsimulator_CD} {input.human_gm_deepsimulator_CI} \
+        {input.sarscov_gm_seq2squiggle} {input.sarscov_gm_squigulator} {input.sarscov_gm_exp} \
+        {input.sarscov_gm_deepsimulator_CD} {input.sarscov_gm_deepsimulator_CI} \
+        --group_labels 'seq2squiggle,squigulator,experimental,deepsimulator (context-dependent), deepsimulator (context-independent)' \
+        --experiment_labels 'Human \nGenome Mode,SARS-CoV2 \nGenome Mode'
+        """
+
+
+
 
 rule publish_results_groupplots:
     input:
-        groupplots=rules.plot_sam_stats_groupplots.output,
+        groupplots_r10=rules.plot_sam_stats_groupplots.output,
+        groupplots_r9=rules.plot_sam_stats_groupplots_R9.output,
         # figure01=rules.plot_Figure_01.output,
         config="config/config.yml",
         config_seq2squiggle="config/seq2squiggle-config.yml"
@@ -114,7 +161,8 @@ rule publish_results_groupplots:
         # cp -r {input.figure01} {output}
         """
         mkdir -p {output}
-        cp -r {input.groupplots} {output}
+        cp -r {input.groupplots_r10} {output}
+        cp -r {input.groupplots_r9} {output}
         cp {input.config} {output}
         cp {input.config_seq2squiggle} {output}
         """

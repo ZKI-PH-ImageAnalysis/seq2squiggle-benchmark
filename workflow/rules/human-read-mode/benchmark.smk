@@ -8,12 +8,13 @@ rule run_seq2squiggle:
         model=rules.train_seq2squiggle.output,
         fastq=rules.remove_short_reads_subset.output,
         config="config/seq2squiggle-config.yml",
+        installed=rules.install_poetry.output,
     output:
-        "results/human/seq2squiggle_reads.slow5"
+        "results/human_rm/seq2squiggle_reads.slow5"
     params:
         commands=config["read_mode"]["seq2squiggle"]
     conda:
-        "../../envs/seq2squiggle.yml"
+        "../../envs/seq2squiggle-dev-copy.yml"
     log:
         "results/logs/seq2squiggle-simulation.log"
     threads: 16
@@ -25,31 +26,27 @@ rule run_seq2squiggle:
         partition="zki,zki_mig", 
     shell:
         """
-        resources/seq2squiggle/src/seq2squiggle/seq2squiggle.py predict --config {input.config} --model {input.model} {params.commands} -o {output} {input.fastq}
+        poetry -C resources/seq2squiggle/ run seq2squiggle predict --config {input.config} --model {input.model} {params.commands} -o {output} {input.fastq}
         """
 
-rule fix_seq2squiggle_slow5:
+rule blow5_to_pod5_seq2squiggle_rm:
     input:
         rules.run_seq2squiggle.output,
     output:
-        "results/human/seq2squiggle_reads_fixed.slow5",
-    threads: 8
-    log:
-        "results/logs/seq2squiggle-fixslow5.log",
-    resources:
-        disk_mb=50000,
-        runtime=add_slack(50),
-        mem_mb=100000,   
+        "results/human_rm/seq2squiggle_reads.pod5"
+    threads: 128
+    conda:
+        "../../envs/minimap2.yml"
     shell:
         """
-        awk 'BEGIN {{FS="\\t"; OFS="\\t"}} /^[@#]/ {{print; next}} {{split($1, a, "!"); $1 = a[2]; print}}' {input} > {output}
+        blue-crab s2p {input} -o {output}
         """
 
 rule basecall_seq2squiggle:
     input:
-        rules.run_seq2squiggle.output
+        rules.blow5_to_pod5_seq2squiggle_rm.output
     output:
-        "results/human/seq2squiggle_reads.fastq"
+        "results/human_rm/seq2squiggle_reads.fastq"
     params:
         model=config["basecalling_model"]
     threads: 32
@@ -63,14 +60,14 @@ rule basecall_seq2squiggle:
         partition="zki,zki_mig", 
     shell:
         """
-        buttery-eel -i {input} -o {output} -x \"cuda:all\" -g resources/ont-guppy-6_5_7/bin/ --config {params.model} --use_tcp --port 8010 --slow5_threads 32
+        ./resources/dorado-0.8.0-linux-x64/bin/dorado basecaller --emit-fastq {params.model} {input} > {output}
         """
 
 rule remove_header_seq2squiggle_fastq:
     input:
         rules.basecall_seq2squiggle.output,
     output:
-        "results/human/seq2squiggle_reads_fixed.fastq",
+        "results/human_rm/seq2squiggle_reads_fixed.fastq",
     threads: 64
     log:
         "results/logs/fix-reads-seq2squiggle.log",
@@ -83,11 +80,11 @@ rule remove_header_seq2squiggle_fastq:
         awk 'BEGIN {{ FS = " "; ORS = "\\n" }} /^@/ {{ print $1 }} !/^@/ {{ print }}' {input} > {output}
         """
 
-rule run_squigulator:
+rule run_squigulator_rm:
     input:
         rules.remove_short_reads_subset.output,
     output:
-        "results/human/squigulator_reads.slow5",
+        "results/human_rm/squigulator_reads.slow5",
     params:
         commands=config["read_mode"]["squigulator"],
     threads: 128
@@ -99,14 +96,34 @@ rule run_squigulator:
         mem_mb=100000,   
     shell:
         """
-        resources/squigulator/squigulator {params.commands} {input} -o {output}
+        resources/squigulator-v0.4.0/squigulator {params.commands} {input} -o {output}
         """
 
-rule fix_squigulator_slow5:
+
+rule run_squigulator_rm_readids:
     input:
-        rules.run_squigulator.output,
+        rules.remove_short_reads_subset.output,
     output:
-        "results/human/squigulator_reads_fixed.slow5",
+        "results/human_rm/squigulator_reads_readids.slow5",
+    params:
+        commands=config["read_mode"]["squigulator_readids"],
+    threads: 128
+    log:
+        "results/logs/squigulator-simulation.log",
+    resources:
+        disk_mb=50000,
+        runtime=add_slack(900),
+        mem_mb=100000,   
+    shell:
+        """
+        resources/squigulator-v0.4.0/squigulator {params.commands} {input} -o {output}
+        """
+
+rule fix_squigulator_slow5_rm_readids:
+    input:
+        rules.run_squigulator_rm_readids.output,
+    output:
+        "results/human_rm/squigulator_reads_readids_fixed.slow5",
     threads: 8
     log:
         "results/logs/squigulator-fixslow5.log",
@@ -119,11 +136,30 @@ rule fix_squigulator_slow5:
         awk 'BEGIN {{FS="\\t"; OFS="\\t"}} /^[@#]/ {{print; next}} {{split($1, a, "!"); $1 = a[2]; print}}' {input} > {output}
         """
 
+
+
+
+rule blow5_to_pod5_squigulator_rm:
+    input:
+        rules.run_squigulator_rm.output,
+    output:
+        "results/human_rm/squigulator_reads_fixed.pod5"
+    conda:
+        "../../envs/blue-crab.yml"
+    threads: 128
+    conda:
+        "../../envs/minimap2.yml"
+    shell:
+        """
+        blue-crab s2p {input} -o {output}
+        """      
+
+
 rule basecall_squigulator:
     input:
-        rules.fix_squigulator_slow5.output,
+        rules.blow5_to_pod5_squigulator_rm.output,
     output:
-        "results/human/squigulator_reads.fastq"
+        "results/human_rm/squigulator_reads.fastq"
     params:
         model=config["basecalling_model"]
     threads: 64
@@ -137,14 +173,14 @@ rule basecall_squigulator:
         partition="zki,zki_mig",   
     shell:
         """
-        buttery-eel -i {input} -o {output} -x \"cuda:all\" -g resources/ont-guppy-6_5_7/bin/ --config {params.model} --use_tcp --port 8020 --slow5_threads 32
+        ./resources/dorado-0.8.0-linux-x64/bin/dorado basecaller --emit-fastq {params.model} {input} > {output}
         """
 
 rule remove_header_squigulator_fastq:
     input:
         rules.basecall_squigulator.output,
     output:
-        "results/human/squigulator_reads_fixed.fastq",
+        "results/human_rm/squigulator_reads_fixed.fastq",
     threads: 64
     log:
         "results/logs/fix-reads-squigulator.log",
@@ -160,9 +196,9 @@ rule remove_header_squigulator_fastq:
 rule align_squigulator:
     input:
         seqs=rules.remove_header_squigulator_fastq.output,
-        ref="data/zymo-human/GRCh38_no_alt.fna"
+        ref=config["human_ref"],
     output:
-        "results/human/squigulator_reads.sam",
+        "results/human_rm/squigulator_reads.sam",
     params:
         commands=config["minimap2_commands"]
     conda:
@@ -182,9 +218,9 @@ rule align_squigulator:
 rule align_seq2squiggle:
     input:
         seqs=rules.remove_header_seq2squiggle_fastq.output,
-        ref="data/zymo-human/GRCh38_no_alt.fna"
+        ref=config["human_ref"],
     output:
-        "results/human/seq2squiggle_reads.sam",
+        "results/human_rm/seq2squiggle_reads.sam",
     params:
         commands=config["minimap2_commands"]
     conda:

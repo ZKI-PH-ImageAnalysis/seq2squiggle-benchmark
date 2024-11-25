@@ -1,0 +1,11 @@
+name: ont-bonito-2
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
+dependencies:
+  - pip
+  - python=3.12.5=h2ad013b_0_cpython
+  - pip:
+      - ont-bonito
+      - pod5

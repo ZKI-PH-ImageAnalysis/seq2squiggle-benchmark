@@ -14,7 +14,7 @@ rule runtime_plot_gm_fly:
 
 rule sam_stats_squigulator_gm_fly:
     input:
-        ref="data/d-melanogaster/GCF_000001215.4_Release_6_plus_ISO1_MT_genomic.fna",
+        ref=config["d_melanogaster_ref"],
         sam=rules.align_squigulator_gm_fly.output
     output:
         "results/d-melanogaster/squigulator.npz",
@@ -34,7 +34,7 @@ rule sam_stats_squigulator_gm_fly:
 
 rule sam_stats_seq2squiggle_gm_fly:
     input:
-        ref="data/d-melanogaster/GCF_000001215.4_Release_6_plus_ISO1_MT_genomic.fna",
+        ref=config["d_melanogaster_ref"],
         sam=rules.align_seq2squiggle_gm_fly.output
     output:
         "results/d-melanogaster/seq2squiggle.npz",
@@ -54,7 +54,7 @@ rule sam_stats_seq2squiggle_gm_fly:
 
 rule sam_stats_experimental_gm_fly:
     input:
-        ref="data/d-melanogaster/GCF_000001215.4_Release_6_plus_ISO1_MT_genomic.fna",
+        ref=config["d_melanogaster_ref"],
         sam=rules.align_reference_subset_fly.output
     output:
         "results/d-melanogaster/experimental.npz",

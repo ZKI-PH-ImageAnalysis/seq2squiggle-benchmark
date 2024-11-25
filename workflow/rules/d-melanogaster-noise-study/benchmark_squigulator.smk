@@ -7,7 +7,7 @@
 
 rule run_squigulator_ideal_fly:
     input:
-        "data/d-melanogaster/GCF_000001215.4_Release_6_plus_ISO1_MT_genomic.fna",
+        config["d_melanogaster_ref"],
     output:
         "results/d-melanogaster-noise/squigulator_reads_ideal.slow5",
     params:
@@ -24,29 +24,27 @@ rule run_squigulator_ideal_fly:
         mem_mb=100000,   
     shell:
         """
-        resources/squigulator/squigulator {params.commands} {input} -o {output} -n {params.sample_rate}
+        resources/squigulator-v0.4.0/squigulator {params.commands} {input} -o {output} -n {params.sample_rate}
         """
 
-rule fix_squigulator_slow5_ideal_fly:
+rule blow5_to_pod5_squigulator_ideal_fly:
     input:
         rules.run_squigulator_ideal_fly.output,
     output:
-        "results/d-melanogaster-noise/squigulator_reads_fixed_ideal.slow5",
-    threads: 8
-    log:
-        "results/logs/squigulator-fixslow5.log",
-    resources:
-        disk_mb=50000,
-        runtime=add_slack(50),
-        mem_mb=100000,   
+        "results/d-melanogaster/squigulator_reads_ideal.pod5"
+    conda:
+        "../../envs/blue-crab.yml"
+    threads: 128
+    conda:
+        "../../envs/minimap2.yml"
     shell:
         """
-        awk 'BEGIN {{FS="\\t"; OFS="\\t"}} /^[@#]/ {{print; next}} {{split($1, a, "!"); $1 = a[2]; print}}' {input} > {output}
-        """
+        blue-crab s2p {input} -o {output}
+        """  
 
 rule basecall_squigulator_ideal_fly:
     input:
-        rules.fix_squigulator_slow5_ideal_fly.output,
+        rules.blow5_to_pod5_squigulator_ideal_fly.output,
     output:
         "results/d-melanogaster-noise/squigulator_reads_ideal.fastq"
     params:
@@ -62,7 +60,7 @@ rule basecall_squigulator_ideal_fly:
         partition="zki,zki_mig",   
     shell:
         """
-        buttery-eel -i {input} -o {output} -x \"cuda:all\" -g resources/ont-guppy-6_5_7/bin/ --config {params.model} --port 8003 --use_tcp --slow5_threads 32
+        ./resources/dorado-0.8.0-linux-x64/bin/dorado basecaller --emit-fastq {params.model} {input} > {output}
         """
 
 rule remove_header_squigulator_fastq_ideal_fly:
@@ -85,7 +83,7 @@ rule remove_header_squigulator_fastq_ideal_fly:
 rule align_squigulator_ideal_fly:
     input:
         seqs=rules.remove_header_squigulator_fastq_ideal_fly.output,
-        ref="data/d-melanogaster/GCF_000001215.4_Release_6_plus_ISO1_MT_genomic.fna"
+        ref=config["d_melanogaster_ref"]
     output:
         "results/d-melanogaster-noise/squigulator_reads_ideal.sam",
     params:
@@ -108,7 +106,7 @@ rule align_squigulator_ideal_fly:
 
 rule run_squigulator_idealtime_fly:
     input:
-        "data/d-melanogaster/GCF_000001215.4_Release_6_plus_ISO1_MT_genomic.fna",
+        config["d_melanogaster_ref"],
     output:
         "results/d-melanogaster-noise/squigulator_reads_idealtime.slow5",
     params:
@@ -125,29 +123,27 @@ rule run_squigulator_idealtime_fly:
         mem_mb=100000,   
     shell:
         """
-        resources/squigulator/squigulator {params.commands} {input} -o {output} -n {params.sample_rate}
+        resources/squigulator-v0.4.0/squigulator {params.commands} {input} -o {output} -n {params.sample_rate}
         """
 
-rule fix_squigulator_slow5_idealtime_fly:
+rule blow5_to_pod5_squigulator_idealtime_fly:
     input:
         rules.run_squigulator_idealtime_fly.output,
     output:
-        "results/d-melanogaster-noise/squigulator_reads_fixed_idealtime.slow5",
-    threads: 8
-    log:
-        "results/logs/squigulator-fixslow5.log",
-    resources:
-        disk_mb=50000,
-        runtime=add_slack(50),
-        mem_mb=100000,   
+        "results/d-melanogaster/squigulator_reads_idealtime.pod5"
+    conda:
+        "../../envs/blue-crab.yml"
+    threads: 128
+    conda:
+        "../../envs/minimap2.yml"
     shell:
         """
-        awk 'BEGIN {{FS="\\t"; OFS="\\t"}} /^[@#]/ {{print; next}} {{split($1, a, "!"); $1 = a[2]; print}}' {input} > {output}
+        blue-crab s2p {input} -o {output}
         """
 
 rule basecall_squigulator_idealtime_fly:
     input:
-        rules.fix_squigulator_slow5_idealtime_fly.output,
+        rules.blow5_to_pod5_squigulator_idealtime_fly.output,
     output:
         "results/d-melanogaster-noise/squigulator_reads_idealtime.fastq"
     params:
@@ -163,7 +159,7 @@ rule basecall_squigulator_idealtime_fly:
         partition="zki,zki_mig",   
     shell:
         """
-        buttery-eel -i {input} -o {output} -x \"cuda:all\" -g resources/ont-guppy-6_5_7/bin/ --config {params.model} --port 8001 --use_tcp --slow5_threads 32
+        ./resources/dorado-0.8.0-linux-x64/bin/dorado basecaller --emit-fastq {params.model} {input} > {output}
         """
 
 rule remove_header_squigulator_fastq_idealtime_fly:
@@ -186,7 +182,7 @@ rule remove_header_squigulator_fastq_idealtime_fly:
 rule align_squigulator_idealtime_fly:
     input:
         seqs=rules.remove_header_squigulator_fastq_idealtime_fly.output,
-        ref="data/d-melanogaster/GCF_000001215.4_Release_6_plus_ISO1_MT_genomic.fna"
+        ref=config["d_melanogaster_ref"]
     output:
         "results/d-melanogaster-noise/squigulator_reads_idealtime.sam",
     params:
@@ -209,7 +205,7 @@ rule align_squigulator_idealtime_fly:
 
 rule run_squigulator_idealamp_fly:
     input:
-        "data/d-melanogaster/GCF_000001215.4_Release_6_plus_ISO1_MT_genomic.fna",
+        config["d_melanogaster_ref"],
     output:
         "results/d-melanogaster-noise/squigulator_reads_idealamp.slow5",
     params:
@@ -226,29 +222,27 @@ rule run_squigulator_idealamp_fly:
         mem_mb=100000,   
     shell:
         """
-        resources/squigulator/squigulator {params.commands} {input} -o {output} -n {params.sample_rate}
+        resources/squigulator-v0.4.0/squigulator {params.commands} {input} -o {output} -n {params.sample_rate}
         """
 
-rule fix_squigulator_slow5_idealamp_fly:
+rule blow5_to_pod5_squigulator_idealamp_fly:
     input:
         rules.run_squigulator_idealamp_fly.output,
     output:
-        "results/d-melanogaster-noise/squigulator_reads_fixed_idealamp.slow5",
-    threads: 8
-    log:
-        "results/logs/squigulator-fixslow5.log",
-    resources:
-        disk_mb=50000,
-        runtime=add_slack(50),
-        mem_mb=100000,   
+        "results/d-melanogaster/squigulator_reads_idealamp.pod5"
+    conda:
+        "../../envs/blue-crab.yml"
+    threads: 128
+    conda:
+        "../../envs/minimap2.yml"
     shell:
         """
-        awk 'BEGIN {{FS="\\t"; OFS="\\t"}} /^[@#]/ {{print; next}} {{split($1, a, "!"); $1 = a[2]; print}}' {input} > {output}
+        blue-crab s2p {input} -o {output}
         """
 
 rule basecall_squigulator_idealamp_fly:
     input:
-        rules.fix_squigulator_slow5_idealamp_fly.output,
+        rules.blow5_to_pod5_squigulator_idealamp_fly.output,
     output:
         "results/d-melanogaster-noise/squigulator_reads_idealamp.fastq"
     params:
@@ -264,7 +258,7 @@ rule basecall_squigulator_idealamp_fly:
         partition="zki,zki_mig",   
     shell:
         """
-        buttery-eel -i {input} -o {output} -x \"cuda:all\" -g resources/ont-guppy-6_5_7/bin/ --config {params.model} --port 8007 --use_tcp --slow5_threads 32
+        ./resources/dorado-0.8.0-linux-x64/bin/dorado basecaller --emit-fastq {params.model} {input} > {output}
         """
 
 rule remove_header_squigulator_fastq_idealamp_fly:
@@ -287,7 +281,7 @@ rule remove_header_squigulator_fastq_idealamp_fly:
 rule align_squigulator_idealamp_fly:
     input:
         seqs=rules.remove_header_squigulator_fastq_idealamp_fly.output,
-        ref="data/d-melanogaster/GCF_000001215.4_Release_6_plus_ISO1_MT_genomic.fna"
+        ref=config["d_melanogaster_ref"]
     output:
         "results/d-melanogaster-noise/squigulator_reads_idealamp.sam",
     conda:
@@ -307,11 +301,12 @@ rule align_squigulator_idealamp_fly:
 
 rule run_squigulator_default_fly:
     input:
-        "data/d-melanogaster/GCF_000001215.4_Release_6_plus_ISO1_MT_genomic.fna",
+        config["d_melanogaster_ref"],
     output:
         "results/d-melanogaster-noise/squigulator_reads_default.slow5",
     params:
         sample_rate=config["subsample-fly-noise"],
+        commands=config["d_melanogaster_noise"]["squigulator_default"]
     threads: 128
     benchmark:
         "results/benchmarks/squigulator_fly.txt"
@@ -323,31 +318,31 @@ rule run_squigulator_default_fly:
         mem_mb=100000,   
     shell:
         """
-        resources/squigulator/squigulator -x dna-r10-prom --sample-rate 4000.0 {input} -o {output} -n {params.sample_rate}
+        resources/squigulator-v0.4.0/squigulator {params.commands} {input} -o {output} -n {params.sample_rate}
         """
 
-rule fix_squigulator_slow5_default_fly:
+rule blow5_to_pod5_squigulator_default_fly:
     input:
         rules.run_squigulator_default_fly.output,
     output:
-        "results/d-melanogaster-noise/squigulator_reads_fixed_default.slow5",
-    threads: 8
-    log:
-        "results/logs/squigulator-fixslow5.log",
-    resources:
-        disk_mb=50000,
-        runtime=add_slack(50),
-        mem_mb=100000,   
+        "results/d-melanogaster/squigulator_reads_default.pod5"
+    conda:
+        "../../envs/blue-crab.yml"
+    threads: 128
+    conda:
+        "../../envs/minimap2.yml"
     shell:
         """
-        awk 'BEGIN {{FS="\\t"; OFS="\\t"}} /^[@#]/ {{print; next}} {{split($1, a, "!"); $1 = a[2]; print}}' {input} > {output}
+        blue-crab s2p {input} -o {output}
         """
 
 rule basecall_squigulator_default_fly:
     input:
-        rules.fix_squigulator_slow5_default_fly.output,
+        rules.blow5_to_pod5_squigulator_default_fly.output,
     output:
         "results/d-melanogaster-noise/squigulator_reads_default.fastq"
+    params:
+        model=config["basecalling_model"]
     threads: 64
     log:
         "results/logs/basecall_squigulator_gm_fly.log",
@@ -359,7 +354,7 @@ rule basecall_squigulator_default_fly:
         partition="zki,zki_mig",   
     shell:
         """
-        buttery-eel -i {input} -o {output} -x \"cuda:all\" -g resources/ont-guppy-6_5_7/bin/ --config dna_r10.4.1_e8.2_400bps_sup.cfg --port 8008 --use_tcp --slow5_threads 32
+        ./resources/dorado-0.8.0-linux-x64/bin/dorado basecaller --emit-fastq {params.model} {input} > {output}
         """
 
 rule remove_header_squigulator_fastq_default_fly:
@@ -382,7 +377,7 @@ rule remove_header_squigulator_fastq_default_fly:
 rule align_squigulator_default_fly:
     input:
         seqs=rules.remove_header_squigulator_fastq_default_fly.output,
-        ref="data/d-melanogaster/GCF_000001215.4_Release_6_plus_ISO1_MT_genomic.fna"
+        ref=config["d_melanogaster_ref"]
     output:
         "results/d-melanogaster-noise/squigulator_reads_default.sam",
     conda:

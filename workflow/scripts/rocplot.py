@@ -103,19 +103,26 @@ def format_large_numbers(value, tick_number):
     else:
         return str(int(value))
 
-def plot_grouped(data1, data2, output_path):
+def plot_grouped(data_list, tool_names, output_path):
     sns.set_theme(style="whitegrid")
     sns.set_context("paper", font_scale=1.25)
 
+    # Define color palette, skipping the third default color
+    custom_palette = sns.color_palette() # Use colorblind for default colors
+    selected_colors = [custom_palette[0], custom_palette[1], custom_palette[3], custom_palette[4]]
+
+
     fig, axes = plt.subplots(1, 2, figsize=(12, 6))
 
-    # Filter out data
-    data1 = data1[(data1['sensitivity'] != 0.0) | (data1['precision'] != 0.0)]
-    data2 = data2[(data2['sensitivity'] != 0.0) | (data2['precision'] != 0.0)]
+    for idx, (data, tool_name) in enumerate(zip(data_list, tool_names)):
+        data = data[(data['sensitivity'] != 0.0) | (data['precision'] != 0.0)]
 
-    # True Positives vs. False Positives Plot
-    sns.lineplot(ax=axes[0], x=data1['false_positives'], y=data1['true_positives_baseline'], label='seq2squiggle', lw=2.0)
-    sns.lineplot(ax=axes[0], x=data2['false_positives'], y=data2['true_positives_baseline'], label='squigulator', lw=2.0)
+        # True Positives vs. False Positives Plot
+        sns.lineplot(ax=axes[0], x=data['false_positives'], y=data['true_positives_baseline'], label=tool_name, lw=2.0, color=selected_colors[idx])
+
+        # Precision-Recall Plot
+        sns.lineplot(ax=axes[1], x=data['sensitivity'], y=data['precision'], label=tool_name, lw=2.0, color=selected_colors[idx])
+    
     axes[0].set_xlim(left=0.0)
     axes[0].set_ylim(bottom=0.0)
     axes[0].set_xlabel('False Positives')
@@ -124,10 +131,7 @@ def plot_grouped(data1, data2, output_path):
     axes[0].xaxis.set_major_formatter(FuncFormatter(format_large_numbers))
     axes[0].yaxis.set_major_formatter(FuncFormatter(format_large_numbers))
     axes[0].text(-0.1, 1.1, 'A', transform=axes[0].transAxes, size=20, weight='bold')
-    
-    # Precision-Recall Plot
-    sns.lineplot(ax=axes[1], x=data1['sensitivity'], y=data1['precision'], label='seq2squiggle', lw=2.0)
-    sns.lineplot(ax=axes[1], x=data2['sensitivity'], y=data2['precision'], label='squigulator', lw=2.0)
+
     axes[1].set_xlim([0.0, 1.05])
     axes[1].set_ylim([0.0, 1.05])
     axes[1].set_ylabel('Precision')
@@ -137,7 +141,7 @@ def plot_grouped(data1, data2, output_path):
 
     # Remove individual legends and add a shared legend
     handles, labels = axes[0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc='lower center', ncol=2, frameon=True, bbox_to_anchor=(0.5, 0.005))
+    fig.legend(handles, labels, loc='lower center', ncol=2, frameon=True, bbox_to_anchor=(0.5, -0.015))
     for ax in axes.flatten():
         ax.get_legend().remove()
 
@@ -150,8 +154,8 @@ def plot_grouped(data1, data2, output_path):
 def main():
     parser = argparse.ArgumentParser(description='Generate ROC, Specificity-Sensitivity, and True/False Positives plots from TSV files.')
     parser.add_argument('--outdir', required=True, help='Output directory for the PNG files')
-    parser.add_argument('input1', help='First input TSV file (gzipped)')
-    parser.add_argument('input2', help='Second input TSV file (gzipped)')
+    parser.add_argument('inputs', nargs='+', help='Input TSV files (gzipped)')
+    parser.add_argument('--tools', nargs='+', help='Names of the tools for labeling the datasets')
     args = parser.parse_args()
 
     # Ensure the output directory exists
@@ -163,14 +167,10 @@ def main():
     tf_output_path = os.path.join(args.outdir, 'tf_output.png')
     grouped_output_path = os.path.join(args.outdir, 'Figure04.png')
 
-    data1 = load_data(args.input1)
-    data2 = load_data(args.input2)
+    # Load data for each input file
+    data_list = [load_data(input_file) for input_file in args.inputs]
 
-
-    plot_grouped(data1, data2, grouped_output_path)
-    #plot_roc(data1, data2, roc_output_path)
-    #plot_specificity_sensitivity(data1, data2, ss_output_path)
-    #plot_true_false_positives(data1, data2, tf_output_path)
+    plot_grouped(data_list, args.tools, grouped_output_path)
 
 if __name__ == "__main__":
     main()

@@ -39,3 +39,19 @@ rule save_config:
         """
         cp {input} {output}
         """
+
+rule install_poetry:
+    input:
+        "resources/seq2squiggle/"
+    output:
+        "resources/seq2squiggle/.installed"
+    conda:
+        "../envs/seq2squiggle-dev-copy.yml"
+    shell:
+        """
+        # Only run poetry install if .installed does not exist
+        if [ ! -f {output} ]; then
+            poetry -C resources/seq2squiggle/ install
+            touch {output}
+        fi
+        """

@@ -2,7 +2,7 @@ rule index_subsample_slow5:
     input:
         rules.subsample_slow5_data.output.slow5
     output:
-        "data/zymo-human/PGXX22563_pcr/PGXX22563_reads_subsample.slow5.idx"
+        "data/processed-data/reads_subset.slow5.idx"
     threads: 128
     conda: 
         "../../envs/signal-sim.yml"
@@ -20,11 +20,11 @@ rule index_subsample_slow5:
 
 rule calc_dtw_squigulator:
     input:
-        sim=rules.fix_squigulator_slow5.output,
+        sim=rules.fix_squigulator_slow5_rm_readids.output,
         ref=rules.subsample_slow5_data.output.slow5,
         index=rules.index_subsample_slow5.output,
     output:
-        "results/human/squigulator_dtw.tsv",
+        "results/human_rm/squigulator_dtw.tsv",
     threads: 128
     conda:
         "../../envs/signal-sim.yml"
@@ -48,7 +48,7 @@ rule calc_dtw_seq2squiggle:
         ref=rules.subsample_slow5_data.output.slow5,
         index=rules.index_subsample_slow5.output,
     output:
-        "results/human/seq2squiggle_dtw.tsv",
+        "results/human_rm/seq2squiggle_dtw.tsv",
     threads: 128
     conda:
         "../../envs/signal-sim.yml"
@@ -70,7 +70,7 @@ rule plot_dtw:
         seq2squiggle=rules.calc_dtw_seq2squiggle.output,
         squigulator=rules.calc_dtw_squigulator.output
     output:
-        "results/human/dtw-analysis.png",
+        "results/human_rm/dtw-analysis.png",
     threads: 128
     conda:
         "../../envs/signal-sim.yml"
@@ -87,10 +87,10 @@ rule plot_dtw:
 
 rule sam_stats_squigulator:
     input:
-        ref="data/zymo-human/GRCh38_no_alt.fna",
+        ref=config["human_ref"],
         sam=rules.align_squigulator.output
     output:
-        "results/human/squigulator.npz",
+        "results/human_rm/squigulator.npz",
     threads: 128
     conda:
         "../../envs/sam-stats.yml"
@@ -107,10 +107,10 @@ rule sam_stats_squigulator:
 
 rule sam_stats_seq2squiggle:
     input:
-        ref="data/zymo-human/GRCh38_no_alt.fna",
+        ref=config["human_ref"],
         sam=rules.align_seq2squiggle.output
     output:
-        "results/human/seq2squiggle.npz",
+        "results/human_rm/seq2squiggle.npz",
     threads: 128
     conda:
         "../../envs/sam-stats.yml"
@@ -127,10 +127,10 @@ rule sam_stats_seq2squiggle:
 
 rule sam_stats_experimental:
     input:
-        ref="data/zymo-human/GRCh38_no_alt.fna",
+        ref=config["human_ref"],
         sam=rules.align_reference_subset.output
     output:
-        "results/human/experimental.npz",
+        "results/human_rm/experimental.npz",
     threads: 128
     conda:
         "../../envs/sam-stats.yml"
@@ -151,7 +151,7 @@ rule plot_sam_stats:
         squigulator=rules.sam_stats_squigulator.output,
         experimental=rules.sam_stats_experimental.output
     output:
-        directory("results/human/plots"),
+        directory("results/human_rm/plots"),
     threads: 128
     conda:
         "../../envs/sam-stats.yml"
@@ -169,7 +169,6 @@ rule plot_sam_stats:
 rule publish_results:
     input:
         plots=rules.plot_sam_stats.output,
-        #f5c_plots=rules.analyse_f5c_file.output,
         dtw_plots=rules.plot_dtw.output,
         config="config/config.yml",
         config_seq2squiggle="config/seq2squiggle-config.yml"
@@ -181,6 +180,7 @@ rule publish_results:
         """
         mkdir -p {output}
         cp -r {input.plots} {output}
+        cp {input.dtw_plots} {output}
         cp {input.config} {output}
         cp {input.config_seq2squiggle} {output}
         """
