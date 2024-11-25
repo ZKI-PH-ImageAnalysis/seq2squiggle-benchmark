@@ -12,9 +12,9 @@ from typing import Union
 import os
 import logging
 
-from dataloader import PoreDataModule
-from utils import count_parameters, n_workers
-from model import seq2squiggle
+from .dataloader import PoreDataModule
+from .utils import count_parameters, n_workers
+from .model import seq2squiggle
 
 logger = logging.getLogger("seq2squiggle")
 
@@ -91,9 +91,7 @@ def train_run(
     ]
 
     # "gamma_cpu" not implemented for 'BFloat16'
-    precision = "64"
-    if torch.cuda.device_count() >= 1:
-        precision = "16-mixed"
+    precision = "16-mixed" if torch.cuda.device_count() >= 1 else "64"
 
     trainer = pl.Trainer(
         accelerator="auto",
@@ -106,7 +104,6 @@ def train_run(
         logger=wandb_logger,
         gradient_clip_val=config["gradient_clip_val"],
         strategy=_get_strategy(),
-        #num_nodes=2,
     )
 
     trainer.fit(fft_model, poredata)

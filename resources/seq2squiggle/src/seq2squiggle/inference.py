@@ -6,21 +6,29 @@ Prediction of signals given a fasta file
 import os
 import torch
 import logging
-from signal_io import BLOW5Writer, POD5Writer
-from model import seq2squiggle
 import pytorch_lightning as pl
-
-from utils import get_reads
-from train import DDPStrategy
+import github
+import appdirs
+import requests
+import functools
+import re
+import tqdm
+import shutil
 from pytorch_lightning.loggers import WandbLogger
-from dataloader import PoreDataModule
+
+from .signal_io import BLOW5Writer, POD5Writer
+from .model import seq2squiggle
+from .utils import get_reads, get_profile, update_profile
+from .train import DDPStrategy
+from .dataloader import PoreDataModule
+from . import __version__
 
 
 logger = logging.getLogger("seq2squiggle")
 
 
 def get_writer(
-    out: str, profile: object, ideal_event_length: int, export_every_n_samples: int
+    out: str, profile: object, ideal_mode: bool, export_every_n_samples: int
 ) -> tuple:
     """
     Returns an appropriate file writer object based on the output file extension.
@@ -50,7 +58,7 @@ def get_writer(
         os.remove(out)
 
     if any(out_base.endswith(ext) for ext in slow5_ext):
-        return BLOW5Writer(out, profile, ideal_event_length), export_every_n_samples
+        return BLOW5Writer(out, profile, ideal_mode), export_every_n_samples
     elif out_base.endswith(pod5_ext):
         logger.warning("POD5 Writer does not support appending to an existing file.")
         logger.warning(
@@ -59,13 +67,13 @@ def get_writer(
         logger.warning(
             "This might lead to Out of Memory errors for large-scale simulations. Consider exporting to BLOW5/SLOW5 and using the blue_crab tool for conversion to pod5."
         )
-        return POD5Writer(out, profile, ideal_event_length), float("inf")
+        return POD5Writer(out, profile, ideal_mode), float("inf")
     else:
         logger.error("Output file must have .pod5, .slow5, or .blow5 extension.")
         raise ValueError("Output file must have .pod5, .slow5, or .blow5 extension.")
 
 
-def check_savedweights(saved_weights: str, log_name: str) -> str:
+def get_saved_weights() -> str:
     """
     Checks for the existence of the saved weights file and returns the appropriate file path.
 
@@ -73,8 +81,6 @@ def check_savedweights(saved_weights: str, log_name: str) -> str:
     ----------
     saved_weights : str
         The path to the saved weights file.
-    log_name : str
-        The name used to construct the logging directory path.
 
     Returns
     -------
@@ -86,23 +92,83 @@ def check_savedweights(saved_weights: str, log_name: str) -> str:
     FileNotFoundError
         If neither the specified saved weights file nor the default file in the logging directory is found.
     """
-    log_dir = "./logs-" + log_name
-    if saved_weights and os.path.isfile(saved_weights):
-        model_path = saved_weights
-    elif os.path.isfile(os.path.join(log_dir, "last.ckpt")):
-        logger.warning("Model weights were not found or were not set via --model.")
-        logger.warning(
-            f"Model weights from logging directory {log_dir} will be used instead."
-        )
-        model_path = os.path.join(log_dir, "last.ckpt")
-    else:
-        logger.error("Output filemust have .slow5 or .blow5 extension.")
-        raise FileNotFoundError(
-            "Model weights could not be found. "
-            "Please use the --model argument to specify the path to your model file."
-        )
 
-    return model_path
+    logger.info("Weights file path is not provided.")
+    cache_dir = appdirs.user_cache_dir("seq2squiggle", False, opinion=False)
+    os.makedirs(cache_dir, exist_ok=True)
+
+    version = __version__
+    version_match = None, None, 0
+
+    # Search in local cache
+    for filename in os.listdir(cache_dir):
+        root, ext = os.path.splitext(filename)
+        if ext == ".ckpt":
+            file_version = tuple(
+                g for g in re.match(r".*@v(\d+).(\d+).(\d+)", root).groups()
+            )
+            match = (
+                sum(m)
+                if (m := [i == j for i, j in zip(version, file_version)])[0]
+                else 0
+            )
+            if match > version_match[2]:
+                version_match = os.path.join(cache_dir, filename), None, match
+    if version_match[2] > 0:
+        logger.info(
+            "Model weights file %s retrieved from local cache",
+            version_match[0],
+        )
+        return version_match[0]
+
+    # Search for weights on GitHub repo of seq2squiggle
+    repo = github.Github().get_repo("ZKI-PH-ImageAnalysis/seq2squiggle")
+    for release in repo.get_releases():
+        rel_version = tuple(
+            g for g in re.match(r"v(\d+)\.(\d+)\.(\d+)", release.tag_name).groups()
+        )
+        match = (
+            sum(m) if (m := [i == j for i, j in zip(version, rel_version)])[0] else 0
+        )
+        if match > version_match[2]:
+            for release_asset in release.get_assets():
+                fn, ext = os.path.splitext(release_asset.name)
+                if ext == ".ckpt":
+                    version_match = (
+                        os.path.join(
+                            cache_dir,
+                            f"{fn}@v{'.'.join(map(str, rel_version))}{ext}",
+                        ),
+                        release_asset.browser_download_url,
+                        match,
+                    )
+                    break
+    # Download the model weights if a matching release was found.
+    if version_match[2] > 0:
+        filename, url, _ = version_match
+        logger.info("Downloading model weights file %s from %s", filename, url)
+        r = requests.get(url, stream=True, allow_redirects=True)
+        r.raise_for_status()
+        file_size = int(r.headers.get("Content-Length", 0))
+        desc = "(Unknown total file size)" if file_size == 0 else ""
+        r.raw.read = functools.partial(r.raw.read, decode_content=True)
+        with tqdm.tqdm.wrapattr(
+            r.raw, "read", total=file_size, desc=desc
+        ) as r_raw, open(filename, "wb") as f:
+            shutil.copyfileobj(r_raw, f)
+        return filename
+    else:
+        logger.error(
+            "No matching model weights for release v%s found, please "
+            "specify your model weights explicitly using the `--model` "
+            "parameter",
+            version,
+        )
+        raise ValueError(
+            f"No matching model weights for release v{version} found, "
+            f"please specify your model weights explicitly using the "
+            f"`--model` parameter"
+        )
 
 
 def check_model(model: object, config: dict) -> None:
@@ -123,12 +189,25 @@ def check_model(model: object, config: dict) -> None:
     model_params = model.hparams.config
     architecture_params = config
 
-    for param in architecture_params:
-        if model_params[param] != architecture_params[param]:
-            logger.warning(
-                f"Mismatching {param} parameter in model checkpoint"
-                f" ({model_params[param]}) and in config file ({architecture_params[param]})"
-            )
+    # A list of parameter names to exclude from the comparison
+    exclude_params = [
+        "log_name",
+        "wandb_logger_state",
+        "max_chunks_train",
+        "max_chunks_valid",
+        "train_valid_split",
+        "train_batch_size",
+        "save_model",
+    ]
+
+    # Check for mismatches in parameters that are not in the exclusion list
+    for param, value in architecture_params.items():
+        if param not in exclude_params:
+            if model_params.get(param) != value:
+                logger.warning(
+                    f"Mismatching {param} parameter in model checkpoint"
+                    f" ({model_params.get(param)}) and in config file ({value})"
+                )
 
 
 def inference_run(
@@ -141,13 +220,21 @@ def inference_run(
     c: int,
     out: str,
     profile: dict,
-    ideal_event_length: int,
+    dwell_mean: int,
+    dwell_std: float,
     noise_std: float,
     noise_sampling: bool,
     duration_sampling: bool,
     distr: str,
     predict_batch_size: int,
     export_every_n_samples: int,
+    sample_rate: int,
+    digitisation: int,
+    range_val: float,
+    offset_mean: float,
+    offset_std: float,
+    median_before_mean: float,
+    median_before_std: float,
     seed: int,
 ):
     """
@@ -187,6 +274,8 @@ def inference_run(
         Batch size for predictions.
     export_every_n_samples : int
         Number of samples after which to export data.
+    sampling_rate : int
+        sampling rate
     seed : int
         Random seed for reproducibility.
 
@@ -194,24 +283,68 @@ def inference_run(
     -------
     None
     """
+
+    profile_dict = get_profile(profile)
+    profile_dict = update_profile(profile_dict, sample_rate=sample_rate,
+        digitisation=digitisation,
+        range=range_val,
+        offset_mean=offset_mean,
+        offset_std=offset_std,
+        median_before_mean=median_before_mean,
+        median_before_std=median_before_std)
+
+    # True
+    ideal_mode = not(duration_sampling or dwell_std > 0)
+    
     writer, export_every_n_samples = get_writer(
-        out, profile, ideal_event_length, export_every_n_samples
+        out, profile_dict, ideal_mode, export_every_n_samples
     )
 
-    saved_weights = check_savedweights(saved_weights, config["log_name"])
+    if saved_weights is None:
+        try:
+            saved_weights = get_saved_weights()
+        except github.RateLimitExceededException:
+            logger.error(
+                "GitHub API rate limit exceeded while trying to download the "
+                "model weights. Please download compatible model weights "
+                "manually from the seq2squiggle GitHub repository "
+                "(https://github.com/ZKI-PH-ImageAnalysis/seq2squiggle) and specify these "
+                "using the `--model` parameter"
+            )
+            raise PermissionError(
+                "GitHub API rate limit exceeded while trying to download the "
+                "model weights"
+            )
 
     load_model = seq2squiggle.load_from_checkpoint(
         checkpoint_path=saved_weights,
         out_writer=writer,
-        ideal_event_length=ideal_event_length,
+        dwell_mean=dwell_mean,
+        dwell_std=dwell_std,
         noise_std=noise_std,
         noise_sampling=noise_sampling,
         duration_sampling=duration_sampling,
         export_every_n_samples=export_every_n_samples,
     )
+
     check_model(load_model, config)
 
     reads, total_l = get_reads(fasta, read_input, n, r, c, config, distr, seed)
+
+
+    # "gamma_cpu" not implemented for 'BFloat16'
+    precision = "16-mixed" if torch.cuda.device_count() >= 1 else "32"
+
+    trainer = pl.Trainer(
+        accelerator="auto",
+        precision=precision,
+        devices="auto",
+        logger=False,
+        strategy=_get_strategy(),
+    )
+
+    rank = trainer.global_rank
+    world_size = trainer.world_size
 
     fasta_data = PoreDataModule(
         config=config,
@@ -219,21 +352,8 @@ def inference_run(
         total_l=total_l,
         batch_size=predict_batch_size,
         n_workers=1,  # n_workers > 1 causes incorrect order of IterableDataset + slower than single process
-    )
-
-    wandb_logger = WandbLogger(
-        project="seq2squiggle-testing",
-        config=config,
-        name=config["log_name"],
-        mode="disabled",
-    )
-
-    trainer = pl.Trainer(
-        accelerator="auto",
-        precision="16-mixed",
-        devices="auto",
-        logger=wandb_logger,
-        strategy=_get_strategy(),
+        rank=rank,
+        world_size=world_size,
     )
 
     trainer.predict(model=load_model, datamodule=fasta_data, return_predictions=False)
@@ -255,3 +375,5 @@ def _get_strategy():
     if torch.cuda.device_count() > 1:
         return DDPStrategy(find_unused_parameters=False, static_graph=True)
     return "auto"
+
+
