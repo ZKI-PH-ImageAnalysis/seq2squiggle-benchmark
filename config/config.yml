@@ -7,15 +7,36 @@ partition_multiGPU: ''
 
 # Download paths
 human_data: 'ftp://ftp.sra.ebi.ac.uk/vol1/run/ERR117/ERR11769395/PGXX22563_nonmethylated.tar.gz'
-d_melanogaster_data: 's3://ont-open-data/contrib/melanogaster_bkim_2023.01/flowcells/D.melanogaster.R1041.400bps/D_melanogaster_1/20221217_1251_MN20261_FAV70669_117da01a/ D_melanogaster_R1041_400bps_1'
-human_ref: 'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/001/405/GCA_000001405.15_GRCh38/seqs_for_alignment_pipelines.ucsc_ids/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna.gz'
-d_melanogaster_ref: 'https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/001/215/GCF_000001215.4_Release_6_plus_ISO1_MT/GCF_000001215.4_Release_6_plus_ISO1_MT_genomic.fna.gz'
-human_vcf: 'https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/NA12878_HG001/latest/GRCh38/HG001_GRCh38_1_22_v4.2.1_benchmark.vcf.gz'
+d_melanogaster_data: 's3://ont-open-data/contrib/melanogaster_bkim_2023.01/flowcells/D.melanogaster.R1041.400bps/D_melanogaster_1/20221217_1251_MN20261_FAV70669_117da01a/D_melanogaster_R1041_400bps_1'
+human_ref_download: 'ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/001/405/GCA_000001405.15_GRCh38/seqs_for_alignment_pipelines.ucsc_ids/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna.gz'
+d_melanogaster_ref_download: 'https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/001/215/GCF_000001215.4_Release_6_plus_ISO1_MT/GCF_000001215.4_Release_6_plus_ISO1_MT_genomic.fna.gz'
+human_vcf_download: 'https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/NA12878_HG001/latest/GRCh38/HG001_GRCh38_1_22_v4.2.1_benchmark.vcf.gz'
+
+
+# To download blow5
+# Full paths
+human_signal: 'data/input-data/f5c-DNA-human-4khz/PGXX22563_pcr/PGXX22563_reads.blow5'
+human_signal_R9: 'data/input-data/squigulator-DNA-human-R9/na12878_prom_subsample_merged.blow5'
+human_ref: 'data/input-data/refs/GRCh38_no_alt.fna'
+human_ref_chr22: 'data/input-data/refs/GRCh38_no_alt_chr1.fna'
+human_vcf: 'data/input-data/variants/HG001_GRCh38_GIAB_highconf_CG-IllFB-IllGATKHC-Ion-10X-SOLID_CHROM1-X_v.3.3.2_highconf_PGandRTGphasetransfer.vcf.gz'
+human_bed: 'data/input-data/variants/HG001_GRCh38_GIAB_highconf_CG-IllFB-IllGATKHC-Ion-10X-SOLID_CHROM1-X_v.3.3.2_highconf_nosomaticdel_noCENorHET7.bed'
+d_melanogaster_signal: 'data/input-data/DNA-dmelanogaster-4khz/merged.blow5'
+d_melanogaster_ref: 'data/input-data/refs/GCF_000001215.4_Release_6_plus_ISO1_MT_genomic.fna'
+e_coli_signal: 'data/input-data/DNA-Ecoli-R10/converted.blow5'
+e_coli_ref: 'data/input-data/refs/ecoli_NC_004431_1.fasta'
+sars_cov_signal: 'data/input-data/DNA-R9-SARSCoV/SP1-raw-mapped.blow5'
+sars_cov_ref: 'data/input-data/refs/Wuhan-Hu-1_MN908947_3.fasta'
 
 # Sub-sampling
-subsample-human: '100000'
-subsample-fly: '100000'
-subsample-fly-noise: '50000'
+subsample-human: '100000' # 50000
+subsample-human-R9: '50000' #30000
+subsample-sarscov_R9: '50000'
+subsample-ecoli: '100000' # 50000
+subsample-fly: '100000' # 50000
+subsample-fly-noise: '10000' #10000
+subsample-variants: '250000' #50000
+subsample-variants-R9: '50000' #50000
 max_seq_len: '20' # for skipping short basecalled reads
 dtw_seqs: '2000' # number of sequence that will be visualized for dtw plots
 
@@ -26,44 +47,79 @@ region_test: 'chr1'
 
 # Commandline args for the different modes
 read_mode:
-  seq2squiggle: "--ideal-event-length -1 --duration-sampler True --noise-sampler True --read-input"
-  squigulator: "-x dna-r10-prom --sample-rate 4000.0 --full-contigs"
+  seq2squiggle: "--duration-sampler True --noise-sampler True --read-input --sample-rate 4000"
+  squigulator: "-x dna-r10-prom --sample-rate 4000.0 --full-contigs --ont-friendly=yes"
+  squigulator_readids: "-x dna-r10-prom --sample-rate 4000.0 --full-contigs"
 genome_mode:
-  seq2squiggle: "--ideal-event-length -1 --duration-sampler True --noise-sampler True -r 3000"
-  squigulator: "-x dna-r10-prom --sample-rate 4000.0 -r 3000"
+  seq2squiggle: "--duration-sampler True --noise-sampler True -r 3000 --sample-rate 4000"
+  squigulator: "-x dna-r10-prom --sample-rate 4000.0 -r 3000 --ont-friendly=yes"
+genome_mode_R9:
+  seq2squiggle: "--profile prom_r9_dna --duration-sampler True --noise-sampler True -r 6000 --sample-rate 4000 --distr gamma"
+  squigulator: "-x dna-r9-prom --sample-rate 4000.0 -r 6000 --ont-friendly=yes"
+  deepsimulator_CI: "-l 6000 -M 1"
+  deepsimulator_CD: "-l 6000 -M 0"
+sars_cov_genome_mode_R9:
+  seq2squiggle: "--profile prom_r9_dna --duration-sampler True --noise-sampler True -r 500 --sample-rate 4000"
+  squigulator: "-x dna-r9-prom --sample-rate 4000.0 -r 500 --ont-friendly=yes"
+  deepsimulator_CI: "-l 500 -M 1"
+  deepsimulator_CD: "-l 500 -M 0"
 variant_calling:
-  seq2squiggle: "--ideal-event-length -1 --duration-sampler True --noise-sampler True -n 200000 -r 10000"
-  squigulator: "-x dna-r10-prom --sample-rate 4000.0 -n 200000 -r 10000"
+  seq2squiggle: "--duration-sampler True --noise-sampler True -r 10000 --sample-rate 4000"
+  squigulator: "-x dna-r10-prom --sample-rate 4000.0 -r 10000 --ont-friendly=yes"
+variant_calling_R9:
+  seq2squiggle: "--profile prom_r9_dna --duration-sampler True --noise-sampler True -r 6000 --sample-rate 4000  --distr gamma"
+  squigulator: "-x dna-r9-prom --sample-rate 4000.0 -r 6000 --ont-friendly=yes"
+  deepsimulator_CI: "-l 6000 -M 1 -D 0"
+  deepsimulator_CD: "-l 6000 -M 0 -D 0"
 d_melanogaster_genome_mode:
-  seq2squiggle: "--ideal-event-length -1 --duration-sampler True --noise-sampler True -r 5000"
-  squigulator: "-x dna-r10-prom --sample-rate 4000.0 -r 5000"
+  seq2squiggle: "--duration-sampler True --noise-sampler True -r 5000 --sample-rate 4000"
+  squigulator: "-x dna-r10-prom --sample-rate 4000.0 -r 5000 --ont-friendly=yes"
+e_coli_genome_mode:
+  seq2squiggle: "--duration-sampler True --noise-sampler True -r 6000 --sample-rate 5000 --noise-std 2.0"
+  squigulator: "-x dna-r10-prom --sample-rate 5000.0 -r 6000 --ont-friendly=yes"
 d_melanogaster_noise:
-  seq2squiggle_nonoise: "--noise-std 0.0 --ideal-event-length 10.0 --duration-sampler False --noise-sampler False"
-  seq2squiggle_manualnoise: "--noise-std 1.0 --ideal-event-length 10.0 --duration-sampler False --noise-sampler False"
-  seq2squiggle_noisesampler: "--noise-std 1.0 --ideal-event-length 10.0 --duration-sampler False --noise-sampler True"
-  seq2squiggle_lengthregulator: "--noise-std 0.0 --ideal-event-length -1.0 --duration-sampler True --noise-sampler False"
-  seq2squiggle_lengthregulator_manualnoise: "--noise-std 1.0 --ideal-event-length -1.0 --duration-sampler True --noise-sampler False"
-  seq2squiggle_manuallength: "--noise-std 0.0 --ideal-event-length -1.0 --duration-sampler False --noise-sampler False"
-  seq2squiggle_lengthregulator_noisesampler: "--noise-std 1.0 --ideal-event-length -1.0 --duration-sampler True --noise-sampler True"
-  seq2squiggle_mLR_mNS: "--noise-std 1.0 --ideal-event-length -1.0 --duration-sampler False --noise-sampler False"
-  squigulator_ideal: "-x dna-r10-prom --sample-rate 4000.0 --ideal"
-  squigulator_idealtime: "-x dna-r10-prom --sample-rate 4000.0 --ideal-time"
-  squigulator_idealamp: "-x dna-r10-prom --sample-rate 4000.0 --ideal-amp"
-  squigulator_default: ""
+  seq2squiggle_nonoise: "--noise-std 0.0 --dwell-mean 9.0 --duration-sampler False --noise-sampler False --sample-rate 4000"
+  seq2squiggle_manualnoise: "--noise-std 1.0 --dwell-mean 9.0 --dwell-std 0.0 --duration-sampler False --noise-sampler False --sample-rate 4000"
+  seq2squiggle_noisesampler: "--noise-std 1.0 --dwell-mean 9.0 --dwell-std 0.0 --duration-sampler False --noise-sampler True --sample-rate 4000"
+  seq2squiggle_lengthregulator: "--noise-std 0.0 --duration-sampler True --noise-sampler False --sample-rate 4000"
+  seq2squiggle_lengthregulator_manualnoise: "--noise-std 1.0 --dwell-mean 9.0 --dwell-std 4.0 --duration-sampler True --noise-sampler False --sample-rate 4000"
+  seq2squiggle_manuallength: "--noise-std 0.0 --dwell-mean 9.0 --dwell-std 4.0 --duration-sampler False --noise-sampler False --sample-rate 4000"
+  seq2squiggle_lengthregulator_noisesampler: "--noise-std 1.0 --dwell-mean 9.0 --dwell-std 4.0 --duration-sampler True --noise-sampler True --sample-rate 4000"
+  seq2squiggle_mLR_mNS: "--noise-std 1.0 --dwell-mean 9.0 --dwell-std 4.0 --duration-sampler False --noise-sampler False --sample-rate 4000"
+  squigulator_ideal: "-x dna-r10-prom --sample-rate 4000.0 --ideal --ont-friendly=yes"
+  squigulator_idealtime: "-x dna-r10-prom --sample-rate 4000.0 --ideal-time --ont-friendly=yes"
+  squigulator_idealamp: "-x dna-r10-prom --sample-rate 4000.0 --ideal-amp --ont-friendly=yes"
+  squigulator_default: "-x dna-r10-prom --sample-rate 4000.0 --ont-friendly=yes"
+
+# Heatplot noise study options
+noise_std_values: [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0]  # Range of noise standard deviations
+dwell_std_values: [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0]  # Range of dwell standard deviations
+tools: ['seq2squiggle', 'squigulator']
+d_melanogaster_noise_heatmap:
+  seq2squiggle: "--duration-sampler False --noise-sampler True -r 10000 --sample-rate 4000"
+  squigulator: "-x dna-r10-prom --sample-rate 4000.0 -r 10000 --ont-friendly=yes"
 
 # Segmentation options
-uncalled4_commands: "--eventalign-flags print-read-names,signal-index,samples --pore-model dna_r10.4.1_400bps_9mer --flowcell FLO-MIN114 --kit SQK-LSK114"
+uncalled4_commands: "--eventalign-flags print-read-names,signal-index,samples --pore-model dna_r10.4.1_400bps_9mer --flowcell FLO-PRO114 --kit SQK-LSK114"
+uncalled4_commands_R9: "--eventalign-flags print-read-names,signal-index,samples --pore-model dna_r9.4.1_400bps_6mer --flowcell FLO-PRO002 --kit SQK-LSK109"
 
 # Basecalling options
-basecalling_model: "dna_r10.4.1_e8.2_400bps_sup.cfg"
-buttery_eel_commands: ""
+basecalling_model: "dna_r10.4.1_e8.2_400bps_sup@v4.1.0"
+basecalling_model_r10_5khz: "dna_r10.4.1_e8.2_400bps_sup@v5.0.0"
+basecalling_model_R9: "dna_r9.4.1_e8_sup@v3.3"
 
 # Alignment options
 minimap2_commands: "-x map-ont --eqx -a --secondary=no"
 
 # Variant calling options
-region_variant: 'chr22'
+region_variant: 'chr22' #chr21?
 homopolymer_length: 5
 clair3_commands: "--include_all_ctgs"
+clair3_model_path: "resources/clair3-models/r1041_e82_400bps_sup_v410"
+clair3_model_path_R9: "resources/clair3-models/r941_prom_sup_g5014"
 region_variants: "chr22:1-50818468"
 
+# Bonito training options
+bonito_epochs: 5
+bonito_lr: 1e-8
+bonito_model: 'resources/bonito-models/dna_r10.4.1_e8.2_400bps_sup@v5.0.0'

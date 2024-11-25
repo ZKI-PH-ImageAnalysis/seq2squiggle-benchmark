@@ -4,12 +4,12 @@
 
 ### Logging parameters
 # Name of logging directory
-log_name: "Human-R1041-4khz"
+log_name: "Human-R941"
 # State of wandb logger
 wandb_logger_state: online # disabled, online, offline
 
 ### Preprocessing parameters
-max_chunks_train: 210000000
+max_chunks_train: 210000000 # 2500000   
 max_chunks_valid: 100000
 scaling_max_value: 165.0
 # If valid_dir is not provided, validation data will be generated from the training dataset.
@@ -18,7 +18,7 @@ train_valid_split: 0.9
 max_dna_len: 16
 max_signal_len: 250
 allowed_chars: "_ACGT"
-seq_kmer: 9
+seq_kmer: 6
 
 ### Model parameters
 pre_layers: 1
